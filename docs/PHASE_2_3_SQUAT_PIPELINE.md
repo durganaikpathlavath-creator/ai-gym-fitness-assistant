@@ -110,3 +110,4 @@ python ..\ml\pose\demo.py
 - **Strict Single-Exercise Scope:** Only the Squat state machine is implemented. Push-ups, bicep curls, and other exercises are slated for Phase 2.4+.
 - **2D Planar Projection:** Joint angles are computed on the 2D image projection. Extreme camera viewing angles (e.g., top-down ceiling view) can distort planar angles. Optimal tracking occurs with side or front-oblique camera placement.
 - **Strict Scope Boundaries:** No form scoring, ML classifiers, frontend UI, or database persistence are introduced in this phase.
+

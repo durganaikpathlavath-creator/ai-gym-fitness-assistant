@@ -138,7 +138,7 @@ def build_word_guide():
     meta_data = [
         ["Project", "AI Gym & Fitness Assistant", "Phase", "Phase 2 (Accepted)"],
         ["Implementation", "Developer 2 (Antigravity)", "Review & Approval", "Developer 1 (ChatGPT)"],
-        ["Project Owner", "Anand (Developer 3)", "Status", "100% Verified (82/82 Checks)"],
+        ["Project Owner", "durganaik (Developer 3)", "Status", "100% Verified (82/82 Checks)"],
         ["Backend Stack", "FastAPI + SQLAlchemy + PostgreSQL", "Vision Stack", "OpenCV + MediaPipe Tasks Vision"],
         ["Frontend Stack", "Next.js 16 + React 19 + Tailwind", "Python Runtime", "Python 3.14.2 (64-bit)"],
     ]
@@ -426,17 +426,17 @@ def build_word_guide():
     p_cmds.paragraph_format.left_indent = Inches(0.25)
     p_cmds.add_run(
         "A. Start Backend FastAPI Server:\n"
-        "   cd C:\\Users\\anand\\AI-Gym-Fitness-Assistant\\backend\n"
+        "   cd C:\\Users\\durganaik\\AI-Gym-Fitness-Assistant\\backend\n"
         "   .\\.venv\\Scripts\\Activate.ps1\n"
         "   uvicorn main:app --reload --port 8000\n\n"
         "B. Start Frontend Development Server:\n"
-        "   cd C:\\Users\\anand\\AI-Gym-Fitness-Assistant\\frontend\n"
+        "   cd C:\\Users\\durganaik\\AI-Gym-Fitness-Assistant\\frontend\n"
         "   npm.cmd run dev\n\n"
         "C. Run Computer Vision Standalone Demo:\n"
-        "   cd C:\\Users\\anand\\AI-Gym-Fitness-Assistant\\ml\\pose\n"
+        "   cd C:\\Users\\durganaik\\AI-Gym-Fitness-Assistant\\ml\\pose\n"
         "   ..\\..\\backend\\.venv\\Scripts\\python.exe demo.py --source webcam\n\n"
         "D. Run Complete Test Suite:\n"
-        "   cd C:\\Users\\anand\\AI-Gym-Fitness-Assistant\\ml\n"
+        "   cd C:\\Users\\durganaik\\AI-Gym-Fitness-Assistant\\ml\n"
         "   ..\\backend\\.venv\\Scripts\\python.exe -m unittest discover -s pose -p \"test_*.py\"\n"
         "   cd ..\\backend\n"
         "   .\\.venv\\Scripts\\python.exe test_phase_2_api.py\n"
@@ -450,3 +450,4 @@ def build_word_guide():
 
 if __name__ == "__main__":
     build_word_guide()
+

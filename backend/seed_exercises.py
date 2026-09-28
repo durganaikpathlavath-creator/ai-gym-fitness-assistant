@@ -10,25 +10,35 @@ from models.exercise import Exercise
 
 INITIAL_EXERCISES = [
     {
-        "name": "Squat",
-        "category": "Legs",
-        "description": "Lower-body compound exercise targeting quadriceps, hamstrings, and glutes.",
+        "name": "Squat Rehab & Mobility",
+        "category": "Lower Limb Rehab",
+        "description": "Controlled hip-knee flexion exercise targeting quad engagement, knee stability, and joint range of motion.",
     },
     {
-        "name": "Push-up",
-        "category": "Chest",
-        "description": "Upper-body bodyweight exercise targeting chest, shoulders, and triceps.",
+        "name": "Knee Extension Recovery",
+        "category": "Knee Rehab",
+        "description": "Terminal knee extension exercise for quadriceps re-education and patellar alignment tracking.",
     },
     {
-        "name": "Bicep Curl",
-        "category": "Arms",
-        "description": "Isolation exercise targeting the biceps brachii via elbow flexion.",
+        "name": "Bicep Flexion & Elbow Rehab",
+        "category": "Elbow Rehab",
+        "description": "Controlled elbow flexion/extension for restoring joint excursion, tendon resilience, and arm mobility.",
+    },
+    {
+        "name": "Shoulder Press & Mobility",
+        "category": "Shoulder Rehab",
+        "description": "Scapular upward rotation and overhead mobility exercise for shoulder girdle stability.",
+    },
+    {
+        "name": "Push-up Alignment",
+        "category": "Core & Upper Body",
+        "description": "Bodyweight alignment movement targeting scapular protraction, chest activation, and core stabilization.",
     },
 ]
 
 
 def seed_exercises():
-    """Idempotent seed function to populate default exercises."""
+    """Idempotent seed function to populate default rehabilitation and fitness exercises."""
     db = SessionLocal()
     try:
         added_count = 0
@@ -53,7 +63,7 @@ def seed_exercises():
             db.commit()
             print(f"[SUCCESS] Seeded {added_count} new exercise(s).")
         else:
-            print("[INFO] All seed exercises already present. Zero duplicates created.")
+            print("[INFO] All seed exercises already present.")
 
     finally:
         db.close()

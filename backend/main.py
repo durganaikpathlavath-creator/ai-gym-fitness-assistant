@@ -1,3 +1,11 @@
+"""
+AI_GYM_FITNESS & ASSISTANT (PhysioRecover AI Edition)
+Backend API Entrypoint
+
+Author: P. Durga Naik
+Project: Clinical Physical Therapy, Joint ROM Biomechanics & Smart Gym Assistant
+"""
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,14 +30,26 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="AI Gym & Fitness Assistant", lifespan=lifespan)
+app = FastAPI(
+    title="AI_GYM_FITNESS & ASSISTANT - PhysioRecover AI",
+    description="Physical Rehabilitation, Joint Range-of-Motion (ROM), Injury Prevention & Smart Fitness Assistant API by P. Durga Naik",
+    version="2.0.0",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://ai-gym-fitness-assistant-xi.vercel.app",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:3002",
+        "http://127.0.0.1:3002",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
     ],
+    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,7 +59,11 @@ app.add_middleware(
 @app.get("/")
 def root():
     return {
-        "message": "AI Gym & Fitness Assistant API is running"
+        "status": "online",
+        "project": "AI_GYM_FITNESS & ASSISTANT (PhysioRecover AI)",
+        "author": "P. Durga Naik",
+        "message": "Physical Therapy, Biomechanical Range-of-Motion & Smart Gym Assistant API is fully operational.",
+        "version": "2.0.0",
     }
 
 

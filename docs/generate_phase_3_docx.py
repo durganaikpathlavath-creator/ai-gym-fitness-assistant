@@ -7,7 +7,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
 
-OUTPUT_DIR = r"C:\Users\anand\AI-Gym-Fitness-Assistant\docs"
+OUTPUT_DIR = r"C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\docs"
 OUTPUT_DOCX = os.path.join(OUTPUT_DIR, "PHASE_3_MASTER_IMPLEMENTATION_GUIDE.docx")
 
 
@@ -522,3 +522,4 @@ class WeeklyPerformanceResponse(BaseModel):
 
 if __name__ == "__main__":
     build_docx()
+

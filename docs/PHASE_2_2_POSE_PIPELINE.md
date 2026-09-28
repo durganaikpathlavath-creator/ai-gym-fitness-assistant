@@ -115,3 +115,4 @@ python ..\ml\pose\demo.py --source image --path C:\path\to\photo.jpg --save outp
   - No rep counting or state machines.
   - No exercise classification or form scoring.
   - No database logging or frontend UI integration.
+

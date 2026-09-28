@@ -262,7 +262,7 @@ async def run_step_2d_verification():
         assert hasattr(p2, "user"), "Profile has no 'user' relationship!"
         assert p2.user is not None, "p2.user is None!"
         assert p2.user.id == 2
-        assert p2.user.email == "anandkumarpv123@gmail.com"
+        assert p2.user.email == "durganaik@example.com"
 
         # Verify no direct profile properties on User model
         direct_props = [p for p in ['height_cm', 'weight_kg', 'fitness_goal'] if p in User.__dict__]

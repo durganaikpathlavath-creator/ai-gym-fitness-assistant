@@ -254,19 +254,19 @@ Because fitness data is private, strict multi-tenant isolation is enforced at ev
 
 | File Path | Component | Purpose |
 |---|---|---|
-| [`backend/services/performance_service.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/services/performance_service.py) | Service Layer | Implements weekly aggregation, trend calculations, component delta analysis, violation frequency, and coaching advice. |
-| [`backend/schemas/workout.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/schemas/workout.py) | Pydantic Models | Defines type contracts: `WeeklyPerformanceResponse`, `ReportingPeriod`, `ExerciseStatItem`, `FormWarningItem`, `SessionTrendPoint`. |
-| [`backend/routers/workouts.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/routers/workouts.py) | API Controller | Exposes `GET /performance/weekly?days=7`, handles JWT authentication, and validates input parameters. |
-| [`frontend/src/app/reports/page.tsx`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/frontend/src/app/reports/page.tsx) | Next.js Frontend | Interactive analytics page with time window toggles (7/14/30 days), KPI summary cards, SVG trend chart, violation progress bars, and exercise table. |
-| [`frontend/src/app/dashboard/page.tsx`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/frontend/src/app/dashboard/page.tsx) | Frontend Dashboard | Updated navigation header with a direct route button to `Weekly Intelligence` (`/reports`). |
-| [`frontend/src/app/history/page.tsx`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/frontend/src/app/history/page.tsx) | Frontend History | Added quick-link to `/reports` for seamless longitudinal analysis. |
-| [`backend/test_phase_3_performance.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/test_phase_3_performance.py) | Automated Tests | 10 comprehensive unit and API integration tests covering all Phase 3 algorithms and endpoints. |
+| [`backend/services/performance_service.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/services/performance_service.py) | Service Layer | Implements weekly aggregation, trend calculations, component delta analysis, violation frequency, and coaching advice. |
+| [`backend/schemas/workout.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/schemas/workout.py) | Pydantic Models | Defines type contracts: `WeeklyPerformanceResponse`, `ReportingPeriod`, `ExerciseStatItem`, `FormWarningItem`, `SessionTrendPoint`. |
+| [`backend/routers/workouts.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/routers/workouts.py) | API Controller | Exposes `GET /performance/weekly?days=7`, handles JWT authentication, and validates input parameters. |
+| [`frontend/src/app/reports/page.tsx`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/frontend/src/app/reports/page.tsx) | Next.js Frontend | Interactive analytics page with time window toggles (7/14/30 days), KPI summary cards, SVG trend chart, violation progress bars, and exercise table. |
+| [`frontend/src/app/dashboard/page.tsx`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/frontend/src/app/dashboard/page.tsx) | Frontend Dashboard | Updated navigation header with a direct route button to `Weekly Intelligence` (`/reports`). |
+| [`frontend/src/app/history/page.tsx`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/frontend/src/app/history/page.tsx) | Frontend History | Added quick-link to `/reports` for seamless longitudinal analysis. |
+| [`backend/test_phase_3_performance.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/test_phase_3_performance.py) | Automated Tests | 10 comprehensive unit and API integration tests covering all Phase 3 algorithms and endpoints. |
 
 ---
 
 ## 8. Deep-Dive: Explanation of All 10 Phase 3 Tests
 
-The test suite in [`backend/test_phase_3_performance.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/test_phase_3_performance.py) verifies every logical branch:
+The test suite in [`backend/test_phase_3_performance.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/test_phase_3_performance.py) verifies every logical branch:
 
 1. **`test_01_empty_history`**:
    - Queries a user with zero workout sessions.
@@ -415,3 +415,4 @@ The goal of **Phase 4** is to expand the AI Gym from a single-exercise proof-of-
 ## 6. Standing by for Developer 1 Review
 
 This concludes the Phase 3 Master Tutorial and Phase 4 Proposal. No implementation of Phase 4 has been started. Developer 2 is standing by for Developer 1's feedback and instructions.
+

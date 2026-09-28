@@ -234,12 +234,15 @@ export default function SmartGymPage() {
         {/* Header Bar */}
         <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-cyan-950 border border-cyan-500/50 px-3 py-0.5 text-xs font-semibold text-cyan-300">
                 Smart Gym IoT Integration
               </span>
+              <span className="rounded-full bg-amber-950/80 border border-amber-500/60 px-3 py-0.5 text-[11px] font-bold text-amber-300">
+                Demo / Simulation Mode
+              </span>
               <span className="rounded-full bg-slate-900 border border-slate-800 px-3 py-0.5 text-[11px] text-slate-400">
-                MQTT Topic Architecture
+                MQTT Broker Emulation
               </span>
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight mt-2 text-white">

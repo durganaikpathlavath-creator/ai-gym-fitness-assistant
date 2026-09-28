@@ -47,7 +47,11 @@ export default function Login() {
 
     } catch (error) {
       if (error instanceof Error) {
-        setError(error.message);
+        if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+          setError(`Unable to connect to backend server at ${API_BASE_URL}. Ensure the FastAPI backend is running.`);
+        } else {
+          setError(error.message);
+        }
       } else {
         setError("Something went wrong");
       }

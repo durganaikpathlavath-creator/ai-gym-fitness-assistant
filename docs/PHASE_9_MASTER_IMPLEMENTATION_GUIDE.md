@@ -78,3 +78,4 @@ All endpoints are prefixed with `/analytics` and protected by JWT Authentication
 * **Full Regression Suite (Phases 1–9):** **141 / 141 PASSED**
 * **Frontend Build (`npm run build`):** **16 static routes compiled cleanly**, 0 errors.
 * **Database Reproducibility (`create_tables.py`):** Executed twice sequentially with zero schema drift.
+

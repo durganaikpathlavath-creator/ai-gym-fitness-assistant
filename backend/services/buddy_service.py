@@ -16,7 +16,7 @@ STANDARD_BUDDY_DISCLAIMER = (
 )
 
 MEDICAL_SAFETY_RESPONSE = (
-    "I am your Virtual Gym Buddy—a fitness and workout coaching assistant, NOT a medical doctor. "
+    "I am your Virtual Gym Buddy - a fitness and workout coaching assistant, NOT a medical doctor. "
     "I cannot diagnose medical conditions, evaluate acute physical injuries, prescribe medications, or recommend extreme restrictive diets. "
     "If you are experiencing physical pain, joint injury, dizziness, chest discomfort, or medical symptoms, please stop exercising immediately "
     "and consult a qualified medical professional or doctor."
@@ -262,7 +262,18 @@ class BuddyService:
                 f"Keep up the great effort toward your goal of **{goal}**!"
             )
 
-        # 2. Form / Squat / Technique Questions
+        # 1. Physical Therapy, Joint Rehabilitation & ROM Questions (Prioritized)
+        if any(k in msg for k in ["rehab", "recovery", "rom", "mobility", "joint", "therapy", "physio"]):
+            return (
+                f"🩺 **PhysioRecover Rehabilitation & ROM Guidance**:\n"
+                f"- **Target Joint Range of Motion**: Always move within your pain-free functional excursion (e.g. 90°-120° for knee flexion rehab, full controlled extension without hyperextension).\n"
+                f"- **Tempo & Control**: Aim for a smooth 2-second eccentric phase and a 2-second concentric return to minimize shear stress on healing tendons.\n"
+                f"- **Soreness vs Sharp Pain**: Mild muscular fatigue is natural; sharp or shooting joint sensations mean you should pause and rest.\n"
+                f"- **Tissue Recovery**: Support joint health with consistent hydration and anti-inflammatory nutrition.\n\n"
+                f"You can monitor your live joint angles in real time under the **Live Rehab & Form** tab!"
+            )
+
+        # 2. Form / Technique Questions
         if any(k in msg for k in ["form", "squat", "technique", "issue", "valgus", "depth"]):
             if issues:
                 return (

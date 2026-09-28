@@ -111,7 +111,7 @@ When a repetition is completed (`rep_completed == True`), `SquatFormAnalyzer` co
 
 ## 4. Visualization HUD Updates
 
-The HUD card rendered by [`visualizer.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/ml/pose/visualizer.py) is extended to display real-time form diagnostics:
+The HUD card rendered by [`visualizer.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/ml/pose/visualizer.py) is extended to display real-time form diagnostics:
 - **Line 1:** `Knee Angle: XX.X°`
 - **Line 2:** `State: UP / DESCENDING / BOTTOM / ASCENDING`
 - **Line 3:** `Reps: N`
@@ -146,3 +146,4 @@ python ..\ml\pose\demo.py --source fixture
   * No Performance Score calculation
   * No database persistence of form metrics
   * No historical analytics or frontend dashboards
+

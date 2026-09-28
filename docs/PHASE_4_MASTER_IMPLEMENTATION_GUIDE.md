@@ -165,7 +165,7 @@ $$\text{Healthy Weight Min (kg)} = 18.5 \times \left(\frac{\text{height\_cm}}{10
 $$\text{Healthy Weight Max (kg)} = 24.9 \times \left(\frac{\text{height\_cm}}{100}\right)^2$$
 
 ### Concrete Example
-- **User:** Anand (Height: $175\text{ cm}$, Weight: $70\text{ kg}$)
+- **User:** durganaik (Height: $175\text{ cm}$, Weight: $70\text{ kg}$)
 - **Calculation:**
   $$\text{Height in meters} = 1.75\text{ m}$$
   $$\text{BMI} = \frac{70}{1.75^2} = \frac{70}{3.0625} = 22.857 \rightarrow \mathbf{22.9}$$
@@ -258,7 +258,7 @@ The adjustment of maintenance calories (TDEE) into a targeted daily intake based
      $$\text{Calories Target} = \text{round}(\text{TDEE}, 0)$$
 
 ### Concrete Example
-- Anand with TDEE = $2594.3\text{ kcal}$ selecting `fat_loss`:
+- durganaik with TDEE = $2594.3\text{ kcal}$ selecting `fat_loss`:
   $$\text{Target} = 2594.3 \times 0.80 = 2075.44 \rightarrow \mathbf{2075.0\text{ kcal/day}}$$
 
 ---
@@ -479,7 +479,7 @@ Phase 4 introduces three dedicated relational tables in PostgreSQL:
 
 ## 17. FastAPI Endpoints Reference
 
-All endpoints reside under the `/diet` prefix in [`backend/routers/nutrition.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/routers/nutrition.py):
+All endpoints reside under the `/diet` prefix in [`backend/routers/nutrition.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/routers/nutrition.py):
 
 | Method | Endpoint | Auth Required | Request Body / Query Params | Response Schema | Purpose |
 | :--- | :--- | :---: | :--- | :--- | :--- |
@@ -500,7 +500,7 @@ All endpoints reside under the `/diet` prefix in [`backend/routers/nutrition.py`
 
 ## 18. Pydantic Schemas Reference
 
-All request and response models are strongly typed in [`backend/schemas/nutrition.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/schemas/nutrition.py):
+All request and response models are strongly typed in [`backend/schemas/nutrition.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/schemas/nutrition.py):
 1. **`BMICalculateRequest` / `BMIResponse`**: Height, weight, age, sex, BMI, WHO category, BMR, TDEE, recommended macros.
 2. **`NutritionTargetUpdateRequest` / `NutritionTargetResponse`**: User targets for calories, protein, carbs, fat, water, and meal count.
 3. **`FoodCatalogueItem`**: Item name, category, serving size, calories, protein, carbs, fat, source authority (`USDA FoodData Central`), and `fdc_id`.
@@ -587,7 +587,7 @@ In this system, the LLM is explicitly restricted:
 ## 22. Deterministic Fallback Engine
 
 ### What It Is
-An algorithmic dietician coded entirely in standard Python within [`DieticianService._generate_deterministic_meal_plan`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/services/dietician_service.py).
+An algorithmic dietician coded entirely in standard Python within [`DieticianService._generate_deterministic_meal_plan`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/services/dietician_service.py).
 
 ### How It Works
 If no LLM API key exists or an LLM call fails:
@@ -669,7 +669,7 @@ As established in Phases 1 through 3, security and multi-tenant user isolation a
 
 ## 28. Frontend Nutrition Page (`/nutrition`)
 
-The frontend is built using Next.js 16 (App Router), React 19, and Tailwind CSS at [`frontend/src/app/nutrition/page.tsx`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/frontend/src/app/nutrition/page.tsx):
+The frontend is built using Next.js 16 (App Router), React 19, and Tailwind CSS at [`frontend/src/app/nutrition/page.tsx`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/frontend/src/app/nutrition/page.tsx):
 - **Hero Dashboard:** Displays a dynamic caloric budget progress bar, remaining calorie badges, and status indicator (`On Track`, `Under Target`, `Over Target`).
 - **Macronutrient Rings:** Visual progress bars for Protein, Carbohydrates, and Fat with exact gram counts and percentages.
 - **Hydration Tracker:** Glassmorphic water tracking widget showing daily intake against target liters.
@@ -722,7 +722,7 @@ Every generated diet plan unconditionally contains:
 
 ## 32. Testing & Regression Verification
 
-Phase 4 features a dedicated 13-test automated suite in [`backend/test_phase_4_nutrition.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/test_phase_4_nutrition.py):
+Phase 4 features a dedicated 13-test automated suite in [`backend/test_phase_4_nutrition.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/test_phase_4_nutrition.py):
 
 | Test ID | Test Name | Target Area | Status |
 | :--- | :--- | :--- | :---: |
@@ -757,14 +757,14 @@ Phase 4 features a dedicated 13-test automated suite in [`backend/test_phase_4_n
 
 ## 33. Exact Important Files & What Each Does
 
-1. [`backend/models/nutrition.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/models/nutrition.py): SQLAlchemy ORM models for `NutritionTarget`, `NutritionLog`, and `DietPlan`.
-2. [`backend/schemas/nutrition.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/schemas/nutrition.py): Pydantic v2 schemas defining request/response structures with strict validation constraints.
-3. [`backend/services/nutrition_service.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/services/nutrition_service.py): Mathematical calculation service for BMI, BMR, TDEE, macro distribution, USDA catalogue, and daily/weekly aggregation.
-4. [`backend/services/dietician_service.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/services/dietician_service.py): AI Dietician service managing LLM prompt construction, API calls, response parsing, deterministic fallback, and grocery generation.
-5. [`backend/routers/nutrition.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/routers/nutrition.py): FastAPI router registering all 12 nutrition endpoints with JWT authentication.
-6. [`backend/create_tables.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/create_tables.py): Database migration script ensuring all Phase 4 tables are created idempotently in PostgreSQL.
-7. [`backend/test_phase_4_nutrition.py`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/backend/test_phase_4_nutrition.py): Comprehensive 13-test automated regression suite.
-8. [`frontend/src/app/nutrition/page.tsx`](file:///C:/Users/anand/AI-Gym-Fitness-Assistant/frontend/src/app/nutrition/page.tsx): Full-featured Next.js 16 user interface.
+1. [`backend/models/nutrition.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/models/nutrition.py): SQLAlchemy ORM models for `NutritionTarget`, `NutritionLog`, and `DietPlan`.
+2. [`backend/schemas/nutrition.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/schemas/nutrition.py): Pydantic v2 schemas defining request/response structures with strict validation constraints.
+3. [`backend/services/nutrition_service.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/services/nutrition_service.py): Mathematical calculation service for BMI, BMR, TDEE, macro distribution, USDA catalogue, and daily/weekly aggregation.
+4. [`backend/services/dietician_service.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/services/dietician_service.py): AI Dietician service managing LLM prompt construction, API calls, response parsing, deterministic fallback, and grocery generation.
+5. [`backend/routers/nutrition.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/routers/nutrition.py): FastAPI router registering all 12 nutrition endpoints with JWT authentication.
+6. [`backend/create_tables.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/create_tables.py): Database migration script ensuring all Phase 4 tables are created idempotently in PostgreSQL.
+7. [`backend/test_phase_4_nutrition.py`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/backend/test_phase_4_nutrition.py): Comprehensive 13-test automated regression suite.
+8. [`frontend/src/app/nutrition/page.tsx`](file:///C:/Users/durganaik/AI-Gym-Fitness-Assistant/frontend/src/app/nutrition/page.tsx): Full-featured Next.js 16 user interface.
 
 ---
 
@@ -788,8 +788,8 @@ Phase 4 features a dedicated 13-test automated suite in [`backend/test_phase_4_n
 
 ## 35. Simple Real-World Example: One User Through the Complete System
 
-Let us follow **Anand**:
-1. **Profile Setup:** Anand sets his profile: $175\text{ cm}$, $70\text{ kg}$, age 25, male, `moderate` activity, fitness goal: `fat_loss`, dietary preference: `high_protein`.
+Let us follow **durganaik**:
+1. **Profile Setup:** durganaik sets his profile: $175\text{ cm}$, $70\text{ kg}$, age 25, male, `moderate` activity, fitness goal: `fat_loss`, dietary preference: `high_protein`.
 2. **Target Computation:**
    - BMI: $70 / (1.75^2) = 22.9$ (Normal weight).
    - BMR: $10(70) + 6.25(175) - 5(25) + 5 = 1673.8\text{ kcal}$.
@@ -797,10 +797,10 @@ Let us follow **Anand**:
    - Target Calories (20% deficit): $2594.3 \times 0.80 = 2075\text{ kcal}$.
    - High-Protein Target: $35\%$ protein ($181.6\text{g}$), $40\%$ carbs ($207.5\text{g}$), $25\%$ fat ($57.6\text{g}$).
    - Hydration: $70 \times 0.035 = 2.5\text{ Liters}$.
-3. **Breakfast:** Anand eats 4 Scrambled Eggs ($200\text{g}$) and 2 slices of Whole Wheat Bread ($80\text{g}$). He logs them via the frontend. Total logged: $483\text{ kcal}$, $38.2\text{g P}$.
+3. **Breakfast:** durganaik eats 4 Scrambled Eggs ($200\text{g}$) and 2 slices of Whole Wheat Bread ($80\text{g}$). He logs them via the frontend. Total logged: $483\text{ kcal}$, $38.2\text{g P}$.
 4. **Daily Progress:** The dashboard immediately updates: Remaining budget is $1592\text{ kcal}$. Protein progress ring shows $21\%$.
-5. **AI Dietician:** Anand clicks "Generate Diet Plan". The backend passes his $2075\text{ kcal}$ budget to the dietician engine. He receives a 3-meal plan plus a categorized grocery list (Eggs, Chicken, Brown Rice, Spinach, Olive Oil).
-6. **Weekly Check-In:** At the end of the week, Anand checks `/nutrition`. The 7-day sparkline shows he averaged $2050\text{ kcal/day}$ with a $98.8\%$ compliance rate and status **"On Track"**.
+5. **AI Dietician:** durganaik clicks "Generate Diet Plan". The backend passes his $2075\text{ kcal}$ budget to the dietician engine. He receives a 3-meal plan plus a categorized grocery list (Eggs, Chicken, Brown Rice, Spinach, Olive Oil).
+6. **Weekly Check-In:** At the end of the week, durganaik checks `/nutrition`. The 7-day sparkline shows he averaged $2050\text{ kcal/day}$ with a $98.8\%$ compliance rate and status **"On Track"**.
 
 ---
 
@@ -869,3 +869,4 @@ In Phase 4, the nutrition intelligence is complete, tested, and stored in Postgr
 
 ---
 *End of Phase 4 Master Implementation & Learning Guide.*
+

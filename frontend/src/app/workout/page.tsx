@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { API_BASE_URL } from "@/api/config";
+import { getExerciseConfig, ExerciseBiomechanicsConfig } from "@/config/exerciseBiomechanics";
 
 interface Exercise {
   id: number;
@@ -11,6 +12,14 @@ interface Exercise {
   category: string;
   description: string;
 }
+
+const DEFAULT_FALLBACK_EXERCISES: Exercise[] = [
+  { id: 1, name: "Squat Rehab & Mobility", category: "Lower Limb Rehab", description: "Controlled depth squat focusing on knee tracking, hip mobility, and preventing valgus collapse." },
+  { id: 2, name: "Knee Extension Recovery", category: "Knee Rehab", description: "Seated terminal knee extension targeting quadriceps activation and post-operative excursion." },
+  { id: 3, name: "Bicep Flexion & Elbow Rehab", category: "Elbow Rehab", description: "Controlled eccentric and concentric elbow flexion for tendon recovery." },
+  { id: 4, name: "Shoulder Press & Mobility", category: "Shoulder Rehab", description: "Overhead movement focusing on scapular upward rotation and shoulder impingement prevention." },
+  { id: 5, name: "Push-up Alignment", category: "Core & Upper Body", description: "Horizontal push emphasizing core stability and anterior shoulder positioning." },
+];
 
 interface RepMetric {
   rep_number: number;
@@ -53,18 +62,18 @@ interface DebugInfo {
 
 // MediaPipe 33 keypoint landmark skeleton connections
 const POSE_CONNECTIONS: [number, number][] = [
-  // Torso
+  // Head & Face
+  [0, 1], [1, 2], [2, 3], [3, 7],
+  [0, 4], [4, 5], [5, 6], [6, 8],
+  [9, 10], [0, 11], [0, 12],
+  // Shoulders & Torso
   [11, 12], [11, 23], [12, 24], [23, 24],
-  // Left arm
-  [11, 13], [13, 15],
-  // Right arm
-  [12, 14], [14, 16],
-  // Left leg
-  [23, 25], [25, 27],
-  // Right leg
-  [24, 26], [26, 28],
-  // Head
-  [0, 11], [0, 12],
+  // Arms
+  [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19],
+  [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20],
+  // Legs
+  [23, 25], [25, 27], [27, 29], [27, 31], [29, 31],
+  [24, 26], [26, 28], [28, 30], [28, 32], [30, 32],
 ];
 
 function calculateAngle(
@@ -80,30 +89,51 @@ function calculateAngle(
 
 function loadMediaPipeScripts(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (typeof window !== "undefined" && (window as any).Pose && (window as any).Camera) {
+    if (typeof window !== "undefined" && (window as any).Pose) {
       resolve();
       return;
     }
 
-    const script1 = document.createElement("script");
-    script1.src = "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
-    script1.crossOrigin = "anonymous";
+    // Safety polling in case script is already in document and loaded
+    let attempts = 0;
+    const pollInterval = setInterval(() => {
+      attempts++;
+      if (typeof window !== "undefined" && (window as any).Pose) {
+        clearInterval(pollInterval);
+        resolve();
+        return;
+      }
+      if (attempts > 60) {
+        clearInterval(pollInterval);
+      }
+    }, 50);
 
-    const script2 = document.createElement("script");
-    script2.src = "https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js";
-    script2.crossOrigin = "anonymous";
+    const existing = document.querySelector('script[data-mediapipe="pose"]');
+    if (existing) {
+      existing.addEventListener("load", () => {
+        clearInterval(pollInterval);
+        setTimeout(() => resolve(), 50);
+      });
+      existing.addEventListener("error", () => {
+        clearInterval(pollInterval);
+        reject(new Error("Failed to load MediaPipe Pose script from CDN"));
+      });
+      return;
+    }
 
-    script1.onload = () => {
-      document.body.appendChild(script2);
+    const script = document.createElement("script");
+    script.setAttribute("data-mediapipe", "pose");
+    script.src = "https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js";
+    script.crossOrigin = "anonymous";
+    script.onload = () => {
+      clearInterval(pollInterval);
+      setTimeout(() => resolve(), 50);
     };
-    script2.onload = () => {
-      resolve();
+    script.onerror = () => {
+      clearInterval(pollInterval);
+      reject(new Error("Failed to load MediaPipe Pose script from CDN"));
     };
-    script1.onerror = script2.onerror = () => {
-      reject(new Error("Failed to load MediaPipe scripts"));
-    };
-
-    document.body.appendChild(script1);
+    document.head.appendChild(script);
   });
 }
 
@@ -121,15 +151,51 @@ function drawSkeleton(
   ctx.shadowColor = "#00f2fe";
   ctx.shadowBlur = 8;
 
-  // Connection lines
+  // Step 7: Drawing Test Diagnostic Marker at Real Detected Landmark 0 (Nose)
+  if (landmarks && landmarks[0] && typeof landmarks[0].x === "number") {
+    const noseX = landmarks[0].x * width;
+    const noseY = landmarks[0].y * height;
+
+    ctx.save();
+    // Glowing pink/magenta diagnostic circle on nose
+    ctx.beginPath();
+    ctx.arc(noseX, noseY, 9, 0, 2 * Math.PI);
+    ctx.fillStyle = "#ff0077";
+    ctx.shadowColor = "#ff0077";
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Pulse outer ring
+    ctx.beginPath();
+    ctx.arc(noseX, noseY, 15, 0, 2 * Math.PI);
+    ctx.strokeStyle = "#ff0077";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Label - unmirror text so it reads left-to-right on scaleX(-1) canvas
+    ctx.translate(noseX, noseY);
+    ctx.scale(-1, 1);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("NOSE (LM 0)", 0, -18);
+    ctx.restore();
+  }
+
+  // Step 8: Connection lines (lenient visibility > 0.1 so limbs are not skipped)
   POSE_CONNECTIONS.forEach(([i, j]) => {
     const lm1 = landmarks[i];
     const lm2 = landmarks[j];
     if (
       lm1 &&
       lm2 &&
-      (lm1.visibility === undefined || lm1.visibility > 0.3) &&
-      (lm2.visibility === undefined || lm2.visibility > 0.3)
+      typeof lm1.x === "number" &&
+      typeof lm2.x === "number" &&
+      (lm1.visibility === undefined || lm1.visibility > 0.1) &&
+      (lm2.visibility === undefined || lm2.visibility > 0.1)
     ) {
       ctx.beginPath();
       ctx.moveTo(lm1.x * width, lm1.y * height);
@@ -138,30 +204,33 @@ function drawSkeleton(
     }
   });
 
-  // Key joint dots
+  // Step 6: Key joint dots
   landmarks.forEach((lm, idx) => {
-    if (lm && (lm.visibility === undefined || lm.visibility > 0.3)) {
+    if (lm && typeof lm.x === "number" && (lm.visibility === undefined || lm.visibility > 0.1)) {
       const px = lm.x * width;
       const py = lm.y * height;
       ctx.beginPath();
       ctx.arc(px, py, [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28].includes(idx) ? 6 : 4, 0, 2 * Math.PI);
-      ctx.fillStyle = [25, 26, 13, 14].includes(idx) ? "#f59e0b" : "#ffffff";
+      ctx.fillStyle = [25, 26, 13, 14].includes(idx) ? "#f59e0b" : "#00f2fe";
       ctx.fill();
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "#00f2fe";
+      ctx.strokeStyle = "#ffffff";
       ctx.stroke();
     }
   });
 
   // Angle Badge Overlay
-  if (anglePos) {
+  if (anglePos && typeof anglePos.x === "number") {
     const badgeX = anglePos.x * width;
     const badgeY = anglePos.y * height - 15;
 
+    ctx.save();
+    ctx.translate(badgeX, badgeY);
+    ctx.scale(-1, 1); // Unmirror text for scaleX(-1) canvas
     ctx.shadowBlur = 0;
     ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(badgeX - 35, badgeY - 14, 70, 24, 6) : ctx.rect(badgeX - 35, badgeY - 14, 70, 24);
+    ctx.roundRect ? ctx.roundRect(-35, -14, 70, 24, 6) : ctx.rect(-35, -14, 70, 24);
     ctx.fill();
     ctx.strokeStyle = "#38bdf8";
     ctx.lineWidth = 1.5;
@@ -171,7 +240,8 @@ function drawSkeleton(
     ctx.font = "bold 13px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText(`${Math.round(primaryAngle)}°`, badgeX, badgeY);
+    ctx.fillText(`${Math.round(primaryAngle)}°`, 0, 0);
+    ctx.restore();
   }
 }
 
@@ -182,7 +252,6 @@ export default function WorkoutPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const poseDetectorRef = useRef<any>(null);
-  const cameraUtilRef = useRef<any>(null);
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExerciseId, setSelectedExerciseId] = useState<number>(1);
@@ -201,6 +270,15 @@ export default function WorkoutPage() {
   const [cameraError, setCameraError] = useState<string>("");
   const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
 
+  // Live Developer Debugger & Telemetry Status Panel State
+  const [cameraStatus, setCameraStatus] = useState<"CONNECTED" | "DISCONNECTED" | "REQUESTING" | "ERROR">("DISCONNECTED");
+  const [videoStatus, setVideoStatus] = useState<"PLAYING" | "PAUSED" | "STOPPED">("STOPPED");
+  const [mediaPipeStatus, setMediaPipeStatus] = useState<"IDLE" | "LOADING" | "READY" | "ERROR">("IDLE");
+  const [landmarksDetected, setLandmarksDetected] = useState<boolean>(false);
+  const [poseFps, setPoseFps] = useState<number>(0);
+  const [liveRom, setLiveRom] = useState<number>(0);
+  const baselineAngleRef = useRef<number | null>(null);
+
   // Atomic Pipeline Generation Token Architecture (guarantees old async callbacks die instantly)
   const pipelineGenerationRef = useRef<number>(1);
   const [activeGeneration, setActiveGeneration] = useState<number>(1);
@@ -218,6 +296,7 @@ export default function WorkoutPage() {
   const readyFrameCountRef = useRef<number>(0);
   const lastRepTimeRef = useRef<number>(0);
   const angleHistoryRef = useRef<number[]>([]);
+  const lastLandmarkLogTimeRef = useRef<number>(0);
 
   // Stale React Closure Prevention Refs
   const selectedExerciseIdRef = useRef<number>(selectedExerciseId);
@@ -238,15 +317,16 @@ export default function WorkoutPage() {
     readyFrameCountRef.current = 0;
     lastRepTimeRef.current = 0;
     angleHistoryRef.current = [];
+    baselineAngleRef.current = null;
 
     setReps(0);
     setCurrentAngle(172);
+    setLiveRom(0);
     setFsmState("READY");
 
     const activeEx = exercisesRef.current.find((e) => e.id === selectedExerciseIdRef.current);
     const exName = activeEx ? activeEx.name : "Exercise";
     setCoachingCue(`${exName} selected. Position yourself in starting position.`);
-    setDebugInfo(null);
   }
 
   // Handle Exercise Selection Change with Generation Token Increment
@@ -266,16 +346,13 @@ export default function WorkoutPage() {
     setCallbackExerciseName(exName);
     setFsmExerciseName(exName);
 
-    // 1. Stop active camera & pose processing loop completely
-    stopCamera();
-
-    // 2. Reset all exercise-specific FSM state & telemetry
     resetCVState();
-
     setCoachingCue(`${exName} selected. Position yourself in starting position.`);
 
-    // 3. Rebind and restart MediaPipe explicitly for newExerciseId and currentGen
-    if (sessionActive) {
+    // If camera stream is already running, re-bind pose tracking without dropping hardware camera
+    if (streamRef.current && videoRef.current) {
+      await initPoseTrackingForExercise(newExerciseId, currentGen);
+    } else {
       await startCameraForExercise(newExerciseId, currentGen);
     }
   }
@@ -296,14 +373,14 @@ export default function WorkoutPage() {
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) {
-      router.push("/login");
+      router.push("/login?redirect=/workout");
       return;
     }
 
     async function fetchExercises() {
       try {
         const res = await fetch(`${API_BASE_URL}/exercises`);
-        if (!res.ok) throw new Error("Failed to load exercises");
+        if (!res.ok) throw new Error("Failed to load exercises from backend");
         const data = await res.json();
         setExercises(data);
         if (data.length > 0) {
@@ -312,17 +389,39 @@ export default function WorkoutPage() {
           setSelectedExerciseId(initId);
           selectedExerciseIdRef.current = initId;
         }
+        setError("");
       } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Failed to load exercises");
-        }
+        console.warn("Exercise API fetch notice, using fallback catalog:", err);
+        setExercises(DEFAULT_FALLBACK_EXERCISES);
+        setSelectedExerciseId(1);
+        selectedExerciseIdRef.current = 1;
+        setError(
+          `API notice: Unable to connect to backend at ${API_BASE_URL}. Standard clinical rehab exercises loaded. Ensure the FastAPI server is running on port 8000.`
+        );
       }
     }
 
     fetchExercises();
   }, [router]);
+
+  // Auto-start camera when workout page mounts
+  useEffect(() => {
+    let isMounted = true;
+    const autoInit = async () => {
+      // Delay slightly so video DOM ref is guaranteed attached
+      await new Promise((r) => setTimeout(r, 250));
+      if (!isMounted) return;
+      await startCameraForExercise(selectedExerciseIdRef.current, pipelineGenerationRef.current);
+    };
+
+    autoInit();
+
+    return () => {
+      isMounted = false;
+      stopCamera();
+    };
+  }, []);
+
 
   // Workout timer
   useEffect(() => {
@@ -336,13 +435,6 @@ export default function WorkoutPage() {
       if (interval) clearInterval(interval);
     };
   }, [sessionActive]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
 
   // Update Rep FSM Logic for specific bound exercise with Generation Token Validation
   function updatePoseFSMForExercise(angle: number, boundExerciseId: number, isLandmarkValid: boolean, fsmGen: number) {
@@ -362,55 +454,31 @@ export default function WorkoutPage() {
     if (history.length > 3) history.shift();
     const smoothedAngle = history.reduce((a, b) => a + b, 0) / history.length;
 
-    let topThreshold = 135;
-    let descendThreshold = 125;
-    let bottomThreshold = 100;
-    let ascendingThreshold = 115;
-
     const targetEx = exercisesRef.current.find((e) => e.id === boundExerciseId);
-    const exerciseName = targetEx ? targetEx.name.toLowerCase() : "";
+    const exerciseName = targetEx ? targetEx.name : "Exercise";
+    setFsmExerciseName(exerciseName);
 
-    setFsmExerciseName(targetEx ? targetEx.name : "Exercise");
-
-    if (exerciseName.includes("curl")) {
-      topThreshold = 135;
-      descendThreshold = 125;
-      bottomThreshold = 65;
-      ascendingThreshold = 80;
-    } else if (exerciseName.includes("push") || exerciseName.includes("bench") || exerciseName.includes("press")) {
-      topThreshold = 135;
-      descendThreshold = 125;
-      bottomThreshold = 95;
-      ascendingThreshold = 110;
-    } else {
-      // Squats / Legs
-      topThreshold = 135;
-      descendThreshold = 130;
-      bottomThreshold = 105;
-      ascendingThreshold = 115;
-    }
+    // Resolve modular biomechanics configuration
+    const config = getExerciseConfig(exerciseName);
+    const { top: topThreshold, descend: descendThreshold, bottom: bottomThreshold, ascending: ascendingThreshold } = config.thresholds;
+    const cues = config.coachingCues;
 
     const currentState = fsmStateRef.current;
 
     // Neutral READY state calibration: require 3 consecutive stable frames at topThreshold before active tracking
     if (currentState === "READY") {
-      let calibrationMinAngle = 125;
-      if (exerciseName.includes("push") || exerciseName.includes("bench") || exerciseName.includes("press")) {
-        calibrationMinAngle = 120;
-      }
-
-      if (smoothedAngle >= calibrationMinAngle) {
+      if (smoothedAngle >= config.calibrationMinAngle) {
         readyFrameCountRef.current += 1;
         if (readyFrameCountRef.current >= 3) {
           fsmStateRef.current = "UP";
           setFsmState("UP");
-          setCoachingCue("Starting position confirmed! Ready to begin.");
+          setCoachingCue(cues.ready);
         } else {
-          setCoachingCue(`Calibrating starting position... (${readyFrameCountRef.current}/3)`);
+          setCoachingCue(`Calibrating ${config.targetJoint}... (${readyFrameCountRef.current}/3)`);
         }
       } else {
         readyFrameCountRef.current = 0;
-        setCoachingCue("Extend arm/body fully into starting position to calibrate.");
+        setCoachingCue(cues.starting);
       }
       return;
     }
@@ -419,26 +487,26 @@ export default function WorkoutPage() {
       if (smoothedAngle < descendThreshold) {
         fsmStateRef.current = "DESCENDING";
         setFsmState("DESCENDING");
-        setCoachingCue("Descending / flexing... keep movement controlled.");
+        setCoachingCue(cues.activePhase);
       }
     } else if (currentState === "DESCENDING") {
       if (smoothedAngle <= bottomThreshold) {
         fsmStateRef.current = "BOTTOM";
         setFsmState("BOTTOM");
         reachedBottomRef.current = true;
-        setCoachingCue("Target depth reached! Push / extend back up.");
+        setCoachingCue(cues.peakExcursion);
       } else if (smoothedAngle >= topThreshold) {
         // Aborted or shallow rep without reaching required bottom depth
         fsmStateRef.current = "UP";
         setFsmState("UP");
         reachedBottomRef.current = false;
-        setCoachingCue(`Shallow movement (${Math.round(smoothedAngle)}°)! Descend to ${bottomThreshold}° to count.`);
+        setCoachingCue(`${cues.shallowAlert} Current: ${Math.round(smoothedAngle)}°`);
       }
     } else if (currentState === "BOTTOM") {
       if (smoothedAngle > ascendingThreshold) {
         fsmStateRef.current = "ASCENDING";
         setFsmState("ASCENDING");
-        setCoachingCue("Ascending / extending... complete full motion.");
+        setCoachingCue(cues.returnPhase);
       }
     } else if (currentState === "ASCENDING") {
       if (smoothedAngle >= topThreshold) {
@@ -450,7 +518,7 @@ export default function WorkoutPage() {
           repsRef.current += 1;
           setReps(repsRef.current);
           lastRepTimeRef.current = now;
-          setCoachingCue("Rep complete with full range of motion! Reset and repeat.");
+          setCoachingCue(cues.completedRep);
         }
         fsmStateRef.current = "UP";
         setFsmState("UP");
@@ -461,12 +529,7 @@ export default function WorkoutPage() {
 
   // Handle MediaPipe Pose Results explicitly bound to targetExerciseId and Generation Token
   function handleMediaPipeResultsForExercise(results: any, boundExerciseId: number, callbackGen: number) {
-    // STRICT GENERATION GUARD: If frame callback belongs to an obsolete pipeline generation, DISCARD IMMEDIATELY!
     if (callbackGen !== pipelineGenerationRef.current) {
-      return;
-    }
-
-    if (!sessionActiveRef.current) {
       return;
     }
 
@@ -477,29 +540,51 @@ export default function WorkoutPage() {
 
     const width = videoRef.current.videoWidth || 640;
     const height = videoRef.current.videoHeight || 480;
-    canvas.width = width;
-    canvas.height = height;
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
 
     ctx.clearRect(0, 0, width, height);
 
     if (results.poseLandmarks && results.poseLandmarks.length > 0) {
+      setLandmarksDetected(true);
       const landmarks = results.poseLandmarks;
 
-      const leftHip = landmarks[23];
-      const leftKnee = landmarks[25];
-      const leftAnkle = landmarks[27];
+      const now = performance.now();
+      if (now - lastLandmarkLogTimeRef.current >= 2500) {
+        console.log(
+          `MediaPipe Landmark Detection: count=${landmarks.length}, noseVis=${landmarks[0]?.visibility?.toFixed(2) ?? "N/A"}, leftShoulderVis=${landmarks[11]?.visibility?.toFixed(2) ?? "N/A"}`
+        );
+        lastLandmarkLogTimeRef.current = now;
+      }
 
-      const rightHip = landmarks[24];
-      const rightKnee = landmarks[26];
-      const rightAnkle = landmarks[28];
+      const activeEx = exercisesRef.current.find((e) => e.id === boundExerciseId);
+      const exerciseName = activeEx ? activeEx.name : "Exercise";
+      const config = getExerciseConfig(exerciseName);
 
-      const leftShoulder = landmarks[11];
-      const leftElbow = landmarks[13];
-      const leftWrist = landmarks[15];
+      setCallbackExerciseName(exerciseName);
+      setActiveAnalyzerName(exerciseName);
 
-      const rightShoulder = landmarks[12];
-      const rightElbow = landmarks[14];
-      const rightWrist = landmarks[16];
+      // Extract left and right kinematic chain keypoints according to modular exercise configuration
+      const lA = landmarks[config.keypoints.left.a];
+      const lB = landmarks[config.keypoints.left.b];
+      let lC = landmarks[config.keypoints.left.c];
+
+      const rA = landmarks[config.keypoints.right.a];
+      const rB = landmarks[config.keypoints.right.b];
+      let rC = landmarks[config.keypoints.right.c];
+
+      // If ankle is below camera bounds during standing leg movements, synthesize vertical ankle position
+      if (config.keypoints.left.c === 27 && (!lC || (lC.visibility || 0) < 0.3)) {
+        lC = lB ? { x: lB.x, y: lB.y + 0.3, visibility: lB.visibility } : { x: 0.5, y: 0.8, visibility: 0.5 };
+      }
+      if (config.keypoints.right.c === 28 && (!rC || (rC.visibility || 0) < 0.3)) {
+        rC = rB ? { x: rB.x, y: rB.y + 0.3, visibility: rB.visibility } : { x: 0.5, y: 0.8, visibility: 0.5 };
+      }
+
+      const leftVis = lA && lB && lC ? ((lA.visibility || 0) + (lB.visibility || 0) + (lC.visibility || 0)) / 3 : 0;
+      const rightVis = rA && rB && rC ? ((rA.visibility || 0) + (rB.visibility || 0) + (rC.visibility || 0)) / 3 : 0;
 
       let computedAngle = 172;
       let primaryJoint = { x: 0.5, y: 0.5 };
@@ -507,80 +592,21 @@ export default function WorkoutPage() {
       let sideUsed = "Left";
       let visDetails = "";
 
-      const activeEx = exercisesRef.current.find((e) => e.id === boundExerciseId);
-      const exerciseName = activeEx ? activeEx.name.toLowerCase() : "";
-
-      const currentExName = activeEx ? activeEx.name : "Exercise";
-      setCallbackExerciseName(currentExName);
-      setActiveAnalyzerName(currentExName);
-
-      if (exerciseName.includes("curl") || exerciseName.includes("push") || exerciseName.includes("press")) {
-        // Arm Exercises: evaluate landmark visibility for left and right arms independently
-        const leftArmVis =
-          leftShoulder && leftElbow && leftWrist
-            ? ((leftShoulder.visibility || 0) + (leftElbow.visibility || 0) + (leftWrist.visibility || 0)) / 3
-            : 0;
-
-        const rightArmVis =
-          rightShoulder && rightElbow && rightWrist
-            ? ((rightShoulder.visibility || 0) + (rightElbow.visibility || 0) + (rightWrist.visibility || 0)) / 3
-            : 0;
-
-        if (leftArmVis >= 0.35 && leftArmVis >= rightArmVis) {
-          computedAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-          primaryJoint = leftElbow;
-          isLandmarkValid = true;
-          sideUsed = "Left Arm";
-          visDetails = `S:${(leftShoulder.visibility || 0).toFixed(2)} E:${(leftElbow.visibility || 0).toFixed(2)} W:${(leftWrist.visibility || 0).toFixed(2)}`;
-        } else if (rightArmVis >= 0.35) {
-          computedAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-          primaryJoint = rightElbow;
-          isLandmarkValid = true;
-          sideUsed = "Right Arm";
-          visDetails = `S:${(rightShoulder.visibility || 0).toFixed(2)} E:${(rightElbow.visibility || 0).toFixed(2)} W:${(rightWrist.visibility || 0).toFixed(2)}`;
-        } else {
-          isLandmarkValid = false;
-          visDetails = `Low Arm Vis (L:${leftArmVis.toFixed(2)}, R:${rightArmVis.toFixed(2)})`;
-        }
+      if (leftVis >= 0.35 && leftVis >= rightVis) {
+        computedAngle = calculateAngle(lA, lB, lC);
+        primaryJoint = lB;
+        isLandmarkValid = true;
+        sideUsed = `Left (${config.targetJoint})`;
+        visDetails = `A:${(lA.visibility || 0).toFixed(2)} B:${(lB.visibility || 0).toFixed(2)} C:${(lC.visibility || 0).toFixed(2)}`;
+      } else if (rightVis >= 0.35) {
+        computedAngle = calculateAngle(rA, rB, rC);
+        primaryJoint = rB;
+        isLandmarkValid = true;
+        sideUsed = `Right (${config.targetJoint})`;
+        visDetails = `A:${(rA.visibility || 0).toFixed(2)} B:${(rB.visibility || 0).toFixed(2)} C:${(rC.visibility || 0).toFixed(2)}`;
       } else {
-        // Leg Exercises (Squat / Lunge)
-        // If ankle is below camera bounds or low vis, synthesize ankle point straight down from knee (knee.x, knee.y + 0.3)
-        const effectiveLeftAnkle =
-          leftAnkle && (leftAnkle.visibility || 0) >= 0.3
-            ? leftAnkle
-            : { x: leftKnee.x, y: leftKnee.y + 0.3, visibility: leftKnee.visibility };
-
-        const effectiveRightAnkle =
-          rightAnkle && (rightAnkle.visibility || 0) >= 0.3
-            ? rightAnkle
-            : { x: rightKnee.x, y: rightKnee.y + 0.3, visibility: rightKnee.visibility };
-
-        const leftLegVis =
-          leftHip && leftKnee
-            ? ((leftHip.visibility || 0) + (leftKnee.visibility || 0) + (effectiveLeftAnkle.visibility || 0)) / 3
-            : 0;
-
-        const rightLegVis =
-          rightHip && rightKnee
-            ? ((rightHip.visibility || 0) + (rightKnee.visibility || 0) + (effectiveRightAnkle.visibility || 0)) / 3
-            : 0;
-
-        if (leftLegVis >= 0.35 && leftLegVis >= rightLegVis) {
-          computedAngle = calculateAngle(leftHip, leftKnee, effectiveLeftAnkle);
-          primaryJoint = leftKnee;
-          isLandmarkValid = true;
-          sideUsed = "Left Leg";
-          visDetails = `H:${(leftHip.visibility || 0).toFixed(2)} K:${(leftKnee.visibility || 0).toFixed(2)} A:${(effectiveLeftAnkle.visibility || 0).toFixed(2)}`;
-        } else if (rightLegVis >= 0.35) {
-          computedAngle = calculateAngle(rightHip, rightKnee, effectiveRightAnkle);
-          primaryJoint = rightKnee;
-          isLandmarkValid = true;
-          sideUsed = "Right Leg";
-          visDetails = `H:${(rightHip.visibility || 0).toFixed(2)} K:${(rightKnee.visibility || 0).toFixed(2)} A:${(effectiveRightAnkle.visibility || 0).toFixed(2)}`;
-        } else {
-          isLandmarkValid = false;
-          visDetails = `Low Leg Vis (L:${leftLegVis.toFixed(2)}, R:${rightLegVis.toFixed(2)})`;
-        }
+        isLandmarkValid = false;
+        visDetails = `Low Visibility (L:${leftVis.toFixed(2)}, R:${rightVis.toFixed(2)})`;
       }
 
       setDebugInfo({
@@ -591,11 +617,28 @@ export default function WorkoutPage() {
 
       if (isLandmarkValid) {
         setCurrentAngle(computedAngle);
-        drawSkeleton(ctx, landmarks, width, height, computedAngle, primaryJoint, fsmStateRef.current);
-        updatePoseFSMForExercise(computedAngle, boundExerciseId, true, callbackGen);
+        if (baselineAngleRef.current === null) {
+          baselineAngleRef.current = computedAngle;
+        }
+        setLiveRom(Math.abs(computedAngle - baselineAngleRef.current));
+      }
+
+      // Draw real-time skeleton overlay over webcam stream
+      drawSkeleton(ctx, landmarks, width, height, computedAngle, primaryJoint, fsmStateRef.current);
+
+      if (sessionActiveRef.current) {
+        updatePoseFSMForExercise(computedAngle, boundExerciseId, isLandmarkValid, callbackGen);
       } else {
-        drawSkeleton(ctx, landmarks, width, height, currentAngle, primaryJoint, fsmStateRef.current);
-        updatePoseFSMForExercise(currentAngle, boundExerciseId, false, callbackGen);
+        if (isLandmarkValid) {
+          setCoachingCue(`${exerciseName}: Body detected and tracking. Click 'Start Rehab & Form Session' to record.`);
+        } else {
+          setCoachingCue("Position yourself clearly in front of the camera.");
+        }
+      }
+    } else {
+      setLandmarksDetected(false);
+      if (sessionActiveRef.current) {
+        setCoachingCue("Step back into frame so your full body is visible.");
       }
     }
   }
@@ -615,8 +658,10 @@ export default function WorkoutPage() {
       if (ctx && video.readyState >= 2) {
         const width = video.videoWidth || 640;
         const height = video.videoHeight || 480;
-        canvas.width = width;
-        canvas.height = height;
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
 
         ctx.clearRect(0, 0, width, height);
 
@@ -644,48 +689,99 @@ export default function WorkoutPage() {
     setActiveAnalyzerName(exName);
     setCallbackExerciseName(exName);
     setFsmExerciseName(exName);
+    setMediaPipeStatus("LOADING");
 
     try {
+      console.log("MediaPipe Pose: Loading scripts...");
       await loadMediaPipeScripts();
       if (genToken !== pipelineGenerationRef.current) return;
 
-      if (typeof window !== "undefined" && (window as any).Pose && videoRef.current) {
-        const pose = new (window as any).Pose({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
-        });
+      if (typeof window === "undefined") return;
 
-        pose.setOptions({
-          modelComplexity: 1,
-          smoothLandmarks: true,
-          enableSegmentation: false,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        // Rebind explicitly to targetExerciseId and genToken
-        pose.onResults((results: any) => {
-          handleMediaPipeResultsForExercise(results, targetExerciseId, genToken);
-        });
-        poseDetectorRef.current = pose;
-
-        if ((window as any).Camera && videoRef.current) {
-          const camera = new (window as any).Camera(videoRef.current, {
-            onFrame: async () => {
-              if (genToken !== pipelineGenerationRef.current) return;
-              if (videoRef.current && poseDetectorRef.current) {
-                await poseDetectorRef.current.send({ image: videoRef.current });
-              }
-            },
-            width: 640,
-            height: 480,
-          });
-          camera.start();
-          cameraUtilRef.current = camera;
-          return;
-        }
+      if (!(window as any).Pose) {
+        throw new Error("MediaPipe Pose global (window.Pose) is not available after script loading.");
       }
+
+      console.log("MediaPipe Pose: Instantiating Pose detector (modelComplexity: 0 - Lite)...");
+      const pose = new (window as any).Pose({
+        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+      });
+
+      pose.setOptions({
+        modelComplexity: 0,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      // Explicitly initialize WASM & model weights
+      console.log("MediaPipe Pose: Initializing WASM and model weights...");
+      await pose.initialize();
+      console.log("MediaPipe Pose: READY");
+
+      pose.onResults((results: any) => {
+        handleMediaPipeResultsForExercise(results, targetExerciseId, genToken);
+      });
+      poseDetectorRef.current = pose;
+      setMediaPipeStatus("READY");
+
+      let isProcessingFrame = false;
+      let lastFpsTimestamp = performance.now();
+      let lastFrameLogTimestamp = performance.now();
+      let fpsCounter = 0;
+      let totalFramesProcessed = 0;
+
+      const processFrame = async () => {
+        if (genToken !== pipelineGenerationRef.current) return;
+        const video = videoRef.current;
+
+        const isVideoReady =
+          video &&
+          !video.paused &&
+          !video.ended &&
+          video.videoWidth > 0 &&
+          video.videoHeight > 0 &&
+          video.readyState >= 2;
+
+        if (video && !video.paused && video.readyState >= 2 && videoStatus !== "PLAYING") {
+          setVideoStatus("PLAYING");
+        }
+
+        if (isVideoReady && poseDetectorRef.current && !isProcessingFrame) {
+          isProcessingFrame = true;
+          try {
+            await poseDetectorRef.current.send({ image: video });
+            totalFramesProcessed++;
+            fpsCounter++;
+            const now = performance.now();
+            if (now - lastFpsTimestamp >= 1000) {
+              const currentFps = Math.round((fpsCounter * 1000) / (now - lastFpsTimestamp));
+              setPoseFps(currentFps);
+              fpsCounter = 0;
+              lastFpsTimestamp = now;
+            }
+            if (now - lastFrameLogTimestamp >= 3000) {
+              console.log(
+                `MediaPipe Frames Processed: total=${totalFramesProcessed}, FPS=${fpsCounter}, video=${video.videoWidth}x${video.videoHeight}`
+              );
+              lastFrameLogTimestamp = now;
+            }
+          } catch (sendErr) {
+            console.error("MediaPipe pose.send() frame error:", sendErr);
+          } finally {
+            isProcessingFrame = false;
+          }
+        }
+        if (genToken === pipelineGenerationRef.current) {
+          animFrameRef.current = requestAnimationFrame(processFrame);
+        }
+      };
+      animFrameRef.current = requestAnimationFrame(processFrame);
+      return;
     } catch (err) {
-      console.warn("MediaPipe script loading deferred, starting canvas visual engine:", err);
+      console.error("MediaPipe Pose: INITIALIZATION FAILED:", err);
+      setMediaPipeStatus("ERROR");
     }
 
     startCanvasPoseLoop(genToken);
@@ -697,9 +793,44 @@ export default function WorkoutPage() {
 
     try {
       setCameraError("");
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: "user" },
-      });
+      setCameraStatus("REQUESTING");
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Webcam API not supported in this browser. Please use Chrome, Edge, or Firefox.");
+      }
+
+      let stream: MediaStream;
+      let targetDeviceId: string | undefined = undefined;
+
+      try {
+        if (navigator.mediaDevices.enumerateDevices) {
+          const devs = await navigator.mediaDevices.enumerateDevices();
+          const videoDevs = devs.filter((d) => d.kind === "videoinput");
+          const physicalCam = videoDevs.find(
+            (d) =>
+              d.label.toLowerCase().includes("pc camera") ||
+              (!d.label.toLowerCase().includes("sharing") && !d.label.toLowerCase().includes("virtual"))
+          );
+          if (physicalCam && physicalCam.deviceId) {
+            targetDeviceId = physicalCam.deviceId;
+          }
+        }
+      } catch (_) {}
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: targetDeviceId
+            ? { deviceId: { exact: targetDeviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
+            : { width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false,
+        });
+      } catch (firstErr) {
+        console.warn("Standard video constraint failed, attempting fallback:", firstErr);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: targetDeviceId ? { deviceId: { exact: targetDeviceId } } : true,
+          audio: false,
+        });
+      }
 
       if (genToken !== pipelineGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
@@ -707,16 +838,45 @@ export default function WorkoutPage() {
       }
 
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      setCameraStatus("CONNECTED");
       setCameraActive(true);
+
+      if (videoRef.current) {
+        const vid = videoRef.current;
+        vid.muted = true;
+        vid.volume = 0;
+        vid.defaultMuted = true;
+        vid.playsInline = true;
+        vid.setAttribute("playsinline", "true");
+        vid.setAttribute("muted", "true");
+        vid.setAttribute("autoplay", "true");
+        vid.srcObject = stream;
+
+        const attemptPlay = async () => {
+          try {
+            vid.muted = true;
+            vid.volume = 0;
+            await vid.play();
+            setVideoStatus("PLAYING");
+          } catch (playErr: any) {
+            console.warn("Video playback note (waiting for metadata or user activation):", playErr?.message);
+          }
+        };
+
+        vid.onloadedmetadata = () => attemptPlay();
+        vid.oncanplay = () => {
+          if (vid.paused) attemptPlay();
+        };
+        attemptPlay();
+      }
+
       await initPoseTrackingForExercise(targetExerciseId, genToken);
     } catch (err: unknown) {
-      console.warn("Webcam access unavailable:", err);
-      setCameraError("Camera unavailable or permission denied.");
+      console.warn("Webcam access error:", err);
+      setCameraStatus("ERROR");
+      setVideoStatus("STOPPED");
       setCameraActive(false);
+      setCameraError("Camera access unavailable. Please allow camera permission in your browser.");
     }
   }
 
@@ -725,12 +885,6 @@ export default function WorkoutPage() {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
       animFrameRef.current = null;
-    }
-    if (cameraUtilRef.current) {
-      try {
-        cameraUtilRef.current.stop();
-      } catch (_) {}
-      cameraUtilRef.current = null;
     }
     if (poseDetectorRef.current) {
       try {
@@ -746,13 +900,17 @@ export default function WorkoutPage() {
       videoRef.current.srcObject = null;
     }
     setCameraActive(false);
+    setCameraStatus("DISCONNECTED");
+    setVideoStatus("STOPPED");
+    setLandmarksDetected(false);
+    setPoseFps(0);
   }
 
   // Start Workout Session
   async function handleStartWorkout() {
     const token = localStorage.getItem("access_token");
     if (!token) {
-      router.push("/login");
+      router.push("/login?redirect=/workout");
       return;
     }
 
@@ -760,6 +918,7 @@ export default function WorkoutPage() {
     setError("");
     setCompletedSummary(null);
 
+    let activeSessionId = Date.now();
     try {
       const res = await fetch(`${API_BASE_URL}/workouts/start`, {
         method: "POST",
@@ -770,84 +929,51 @@ export default function WorkoutPage() {
         body: JSON.stringify({ exercise_id: selectedExerciseId }),
       });
 
-      if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login?redirect=/workout");
+        return;
+      }
+
+      if (res.ok) {
         const data = await res.json();
-        throw new Error(data.detail || "Failed to start workout session");
-      }
-
-      const data = await res.json();
-      setSessionId(data.session_id);
-      setSessionActive(true);
-
-      // Increment pipeline generation token
-      pipelineGenerationRef.current += 1;
-      const currentGen = pipelineGenerationRef.current;
-      setActiveGeneration(currentGen);
-
-      // Reset live counter, refs & FSM state
-      resetCVState();
-      setElapsedSeconds(0);
-
-      await startCameraForExercise(selectedExerciseId, currentGen);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
+        activeSessionId = data.session_id;
       } else {
-        setError("Error starting workout");
+        console.warn("Backend session creation warning, proceeding in local session mode");
       }
+    } catch (netErr) {
+      console.warn("Backend unreachable for session start, continuing with local session:", netErr);
+    }
+
+    setSessionId(activeSessionId);
+    setSessionActive(true);
+
+    // Increment pipeline generation token
+    pipelineGenerationRef.current += 1;
+    const currentGen = pipelineGenerationRef.current;
+    setActiveGeneration(currentGen);
+
+    // Reset live counter, refs & FSM state
+    resetCVState();
+    setElapsedSeconds(0);
+
+    try {
+      if (videoRef.current && videoRef.current.paused) {
+        videoRef.current.muted = true;
+        videoRef.current.volume = 0;
+        videoRef.current.play().then(() => setVideoStatus("PLAYING")).catch(() => {});
+      }
+
+      if (streamRef.current && streamRef.current.active && videoRef.current) {
+        await initPoseTrackingForExercise(selectedExerciseId, currentGen);
+      } else {
+        await startCameraForExercise(selectedExerciseId, currentGen);
+      }
+    } catch (err: unknown) {
+      console.warn("Camera start warning:", err);
     } finally {
       setLoading(false);
     }
-  }
-
-  // Simulate Rep Cycle for live testing & interactive feedback
-  function triggerRepCycle(quality: "full" | "shallow" = "full") {
-    if (!sessionActive) return;
-
-    fsmStateRef.current = "DESCENDING";
-    setFsmState("DESCENDING");
-    setCurrentAngle(130);
-    setCoachingCue("Keep body aligned, descending smoothly...");
-
-    setTimeout(() => {
-      if (quality === "full") {
-        fsmStateRef.current = "BOTTOM";
-        setFsmState("BOTTOM");
-        setCurrentAngle(82);
-        setCoachingCue("Target depth reached! Push / extend back up.");
-
-        setTimeout(() => {
-          fsmStateRef.current = "ASCENDING";
-          setFsmState("ASCENDING");
-          setCurrentAngle(135);
-          setCoachingCue("Ascending / extending... complete motion.");
-
-          setTimeout(() => {
-            fsmStateRef.current = "UP";
-            setFsmState("UP");
-            setCurrentAngle(174);
-            repsRef.current += 1;
-            setReps(repsRef.current);
-            setCoachingCue("Rep completed with great form! Reset and repeat.");
-          }, 600);
-        }, 700);
-      } else {
-        setCurrentAngle(105);
-        setCoachingCue("Shallow movement detected (105°)! Must descend further to count.");
-
-        setTimeout(() => {
-          setCurrentAngle(140);
-          setCoachingCue("Rising back up without hitting required depth...");
-
-          setTimeout(() => {
-            fsmStateRef.current = "UP";
-            setFsmState("UP");
-            setCurrentAngle(174);
-            setCoachingCue("Rep uncounted: insufficient depth.");
-          }, 600);
-        }, 700);
-      }
-    }, 700);
   }
 
   // Finish Workout Session
@@ -963,48 +1089,34 @@ export default function WorkoutPage() {
       });
 
       if (!res.ok) {
-        let errMessage = "Failed to record completed workout";
-        try {
-          const errData = await res.json();
-          if (typeof errData.detail === "string") {
-            errMessage = errData.detail;
-          } else if (Array.isArray(errData.detail)) {
-            errMessage = errData.detail.map((e: any) => `${e.loc ? e.loc.slice(1).join(".") : "field"}: ${e.msg}`).join("; ");
-          }
-        } catch (_) {}
-        throw new Error(errMessage);
+        console.warn("Backend save notice for session:", res.status);
       }
-
-      setCompletedSummary({
-        session_id: sessionId,
-        performance_score: compositeScore,
-        calories: caloriesBurned,
-        duration_seconds: elapsedSeconds,
-        total_reps: finalReps,
-        exercise_name: exerciseName,
-        breakdown: {
-          rom: Math.round(avgRom),
-          tempo: Math.round(avgTempo),
-          stability: Math.round(avgStability),
-          form: Math.round(avgForm),
-          smoothness: Math.round(avgSmooth),
-        },
-        rating,
-        reps_data: repMetrics,
-        feedback_cues: feedbackList,
-      });
-
-      setSessionActive(false);
-      setSessionId(null);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Error finalizing workout");
-      }
-    } finally {
-      setLoading(false);
+    } catch (saveErr) {
+      console.warn("Backend save network error, session displayed locally:", saveErr);
     }
+
+    setCompletedSummary({
+      session_id: sessionId,
+      performance_score: compositeScore,
+      calories: caloriesBurned,
+      duration_seconds: elapsedSeconds,
+      total_reps: finalReps,
+      exercise_name: exerciseName,
+      breakdown: {
+        rom: Math.round(avgRom),
+        tempo: Math.round(avgTempo),
+        stability: Math.round(avgStability),
+        form: Math.round(avgForm),
+        smoothness: Math.round(avgSmooth),
+      },
+      rating,
+      reps_data: repMetrics,
+      feedback_cues: feedbackList,
+    });
+
+    setSessionActive(false);
+    setSessionId(null);
+    setLoading(false);
   }
 
   const formatTime = (secs: number) => {
@@ -1018,15 +1130,29 @@ export default function WorkoutPage() {
       {/* Header */}
       <header className="mx-auto flex max-w-6xl items-center justify-between border-b border-slate-800 pb-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-400 to-teal-400 bg-clip-text text-transparent">
-            AI Gym Trainer
+          <div className="flex items-center gap-2 mb-1">
+            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-teal-400">
+              Markerless Pose Biomechanics • PhysioRecover AI
+            </span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
+            Live Rehab & Form Coach
           </h1>
           <p className="text-xs md:text-sm text-slate-400 mt-1">
-            Real-Time Computer Vision & Biomechanical Rep Tracking
+            Joint Range of Motion (ROM) Assessment, Valgus Protection & Safety Rep Tracking
           </p>
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/camera-test"
+            className="rounded-lg border border-amber-500/40 bg-amber-950/20 px-3 py-2 text-xs md:text-sm font-medium text-amber-300 hover:bg-amber-900/40 transition flex items-center gap-1.5"
+            title="Diagnose webcam hardware and MediaPipe pipeline"
+          >
+            <span>🩺</span>
+            <span>Camera Diagnostic</span>
+          </Link>
           <Link
             href="/history"
             className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-xs md:text-sm font-medium hover:bg-slate-800 transition"
@@ -1035,12 +1161,23 @@ export default function WorkoutPage() {
           </Link>
           <Link
             href="/dashboard"
-            className="rounded-lg border border-slate-700 px-4 py-2 text-xs md:text-sm font-medium hover:bg-slate-800 transition"
+            className="rounded-lg border border-teal-500/40 bg-teal-950/20 px-4 py-2 text-xs md:text-sm font-medium text-teal-300 hover:bg-teal-900/40 transition"
           >
             Dashboard
           </Link>
         </div>
       </header>
+
+      {/* Medical Safety Disclaimer Banner */}
+      <div className="mx-auto mt-4 max-w-6xl rounded-xl border border-teal-500/30 bg-slate-900/90 p-4 text-xs text-slate-300 backdrop-blur-md flex items-start gap-3">
+        <span className="text-lg">🩺</span>
+        <div>
+          <strong className="text-teal-300 font-semibold">Educational & Biomechanics Assistance Notice:</strong>{" "}
+          <span>
+            AI_GYM_FITNESS & ASSISTANT is an assistive physical therapy and movement guidance system, NOT a replacement for a certified physical therapist or medical doctor. If you experience acute pain, joint instability, or injury symptoms, stop exercising immediately and consult a qualified healthcare professional.
+          </span>
+        </div>
+      </div>
 
       {/* Error Banner */}
       {error && (
@@ -1053,131 +1190,191 @@ export default function WorkoutPage() {
       <div className="mx-auto mt-6 grid max-w-6xl gap-6 lg:grid-cols-3">
         {/* Left 2 Cols: Live Video & HUD */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl flex items-center justify-center">
-            {/* Real Webcam Stream */}
+          <div
+            className="relative aspect-video w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl flex items-center justify-center cursor-pointer"
+            onClick={async () => {
+              const video = videoRef.current;
+              if (video && video.paused) {
+                video.muted = true;
+                video.volume = 0;
+                try {
+                  await video.play();
+                  setVideoStatus("PLAYING");
+                } catch (e) {
+                  console.warn("Manual video click play:", e);
+                }
+              }
+            }}
+          >
+            {/* Real Webcam Stream (Mirrored for natural mirror-like reflection) */}
             <video
               ref={videoRef}
+              autoPlay
               playsInline
               muted
-              className={`absolute inset-0 h-full w-full object-cover ${cameraActive ? "block" : "hidden"}`}
+              onPlay={() => setVideoStatus("PLAYING")}
+              onPlaying={() => setVideoStatus("PLAYING")}
+              onPause={() => {
+                if (streamRef.current && streamRef.current.active) {
+                  setVideoStatus("PAUSED");
+                } else {
+                  setVideoStatus("STOPPED");
+                }
+              }}
+              className="absolute inset-0 h-full w-full object-cover z-0"
+              style={{ transform: "scaleX(-1)" }}
             />
 
             {/* Computer Vision Skeleton & Angle Overlay Canvas */}
             <canvas
               ref={canvasRef}
-              className={`absolute inset-0 h-full w-full object-cover pointer-events-none ${cameraActive ? "block" : "hidden"}`}
+              className="absolute inset-0 h-full w-full object-cover pointer-events-none z-10"
+              style={{ transform: "scaleX(-1)" }}
             />
 
-            {/* Standby State when camera is off */}
-            {!cameraActive && (
-              <div className="flex flex-col items-center justify-center p-8 text-center space-y-4">
-                <div className="relative h-44 w-44 rounded-full border-2 border-dashed border-blue-500/40 flex items-center justify-center bg-blue-950/20">
-                  <div className="flex flex-col items-center">
-                    <div className="h-8 w-8 rounded-full bg-blue-400" />
-                    <div className="h-16 w-3 bg-blue-500 rounded mt-1" />
-                    <div className="flex gap-4">
-                      <div className="h-14 w-2.5 bg-blue-400 rounded origin-top" />
-                      <div className="h-14 w-2.5 bg-blue-400 rounded origin-top" />
-                    </div>
-                  </div>
+            {/* Standby / Permission Overlay when camera is off */}
+            {cameraStatus !== "CONNECTED" && (
+              <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-8 text-center space-y-4 bg-slate-950/85 backdrop-blur-md">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-500/10 border border-teal-500/30 text-3xl">
+                  📹
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-300">
-                    {cameraError || (sessionActive ? "Vision Pipeline Active" : "Camera Standby")}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1 max-w-sm">
-                    {sessionActive
-                      ? "Tracking 33 MediaPipe pose landmarks, joint flexion angles & anti-false-positive FSM."
-                      : "Select an exercise and press Start Workout to initiate real-time pose tracking."}
+                  <h3 className="text-base font-bold text-white">
+                    {cameraStatus === "REQUESTING" ? "Requesting Camera Access..." : cameraError ? "Camera Access Required" : "Live Camera Standby"}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1 max-w-sm">
+                    {cameraError || "Enable webcam access to track 33 MediaPipe pose landmarks and compute joint angles in real time."}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => startCameraForExercise(selectedExerciseIdRef.current, pipelineGenerationRef.current)}
+                  className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-2.5 text-xs font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400 shadow-lg shadow-teal-500/20 transition cursor-pointer"
+                >
+                  {cameraStatus === "REQUESTING" ? "Connecting..." : "Enable Camera"}
+                </button>
               </div>
             )}
 
-            {/* In-Frame HUD Overlays */}
-            {sessionActive && (
-              <>
-                {/* Top-Left: State & Rep Count */}
-                <div className="absolute top-4 left-4 flex gap-2 z-10">
-                  <div className="rounded-lg bg-black/70 backdrop-blur-md px-3 py-1.5 border border-slate-700">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Reps</span>
-                    <p className="text-2xl font-black text-white">{reps}</p>
-                  </div>
-                  <div className="rounded-lg bg-black/70 backdrop-blur-md px-3 py-1.5 border border-slate-700">
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400">Movement Phase</span>
-                    <p className="text-sm font-bold text-teal-400">{fsmState}</p>
-                  </div>
-                </div>
-
-                {/* Top-Right: Joint Angle */}
-                <div className="absolute top-4 right-4 rounded-lg bg-black/70 backdrop-blur-md px-3 py-1.5 border border-slate-700 text-right z-10">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400">Joint Angle</span>
-                  <p className="text-xl font-bold text-blue-400">{Math.round(currentAngle)}°</p>
-                </div>
-
-                {/* Diagnostic Lifecycle Telemetry Panel */}
-                <div className="absolute top-16 right-4 bg-slate-950/90 backdrop-blur-md p-3 rounded-xl border border-teal-500/40 text-[11px] font-mono text-slate-200 z-20 shadow-2xl space-y-1 max-w-xs">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-teal-400 border-b border-slate-800 pb-1 mb-1 flex justify-between">
-                    <span>🔍 CV Lifecycle Panel</span>
-                    <span className="text-emerald-400">Gen {activeGeneration}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-400">UI_SELECTED:</span>
-                    <span className="font-bold text-white truncate">{exercises.find((e) => e.id === selectedExerciseId)?.name || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-400">ACTIVE_ANALYZER:</span>
-                    <span className="font-bold text-blue-400 truncate">{activeAnalyzerName}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-400">MEDIAPIPE_CALLBACK:</span>
-                    <span className="font-bold text-teal-300 truncate">{callbackExerciseName}</span>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <span className="text-slate-400">FSM_EXERCISE:</span>
-                    <span className="font-bold text-amber-300 truncate">{fsmExerciseName}</span>
-                  </div>
-                  {debugInfo && (
-                    <div className="border-t border-slate-800 pt-1 mt-1 text-[10px] text-slate-400">
-                      <div>SIDE: <span className="text-white">{debugInfo.side}</span> | ANGLE: <span className="text-amber-300">{Math.round(currentAngle)}°</span></div>
-                      <div className="truncate">VIS: {debugInfo.visDetails}</div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom Center: Real-Time AI Coaching Cue */}
-                <div className="absolute bottom-4 left-4 right-4 mx-auto max-w-md rounded-xl bg-slate-950/85 backdrop-blur-md px-4 py-2.5 border border-blue-500/30 text-center shadow-lg z-10">
-                  <span className="text-[10px] font-semibold tracking-wider text-blue-400 uppercase">
-                    AI Coaching Cue
-                  </span>
-                  <p className="text-xs md:text-sm font-medium text-slate-100 mt-0.5">{coachingCue}</p>
-                </div>
-              </>
+            {/* Subtle Click-To-Play Indicator ONLY if camera is connected but video is paused without blocking feed */}
+            {cameraStatus === "CONNECTED" && videoStatus !== "PLAYING" && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-25">
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const video = videoRef.current;
+                    if (video) {
+                      video.muted = true;
+                      video.volume = 0;
+                      try {
+                        await video.play();
+                        setVideoStatus("PLAYING");
+                      } catch (err) {
+                        console.error("Manual video play error:", err);
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-2 rounded-full bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-xl shadow-emerald-500/30 transition animate-bounce cursor-pointer"
+                >
+                  <span>▶</span>
+                  <span>Click to Start Video Stream</span>
+                </button>
+              </div>
             )}
+
+            {/* In-Frame HUD Overlays (Always visible when active) */}
+            <div className="absolute top-4 left-4 flex gap-2 z-20">
+              <div className="rounded-lg bg-black/75 backdrop-blur-md px-3 py-1.5 border border-slate-700">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Reps</span>
+                <p className="text-2xl font-black text-white">{reps}</p>
+              </div>
+              <div className="rounded-lg bg-black/75 backdrop-blur-md px-3 py-1.5 border border-slate-700">
+                <span className="text-[10px] uppercase tracking-wider text-slate-400">Movement Phase</span>
+                <p className="text-sm font-bold text-teal-400">{fsmState}</p>
+              </div>
+            </div>
+
+            {/* Top-Right: Joint Angle & Live ROM */}
+            <div className="absolute top-4 right-4 rounded-lg bg-black/75 backdrop-blur-md px-3 py-1.5 border border-slate-700 text-right z-20">
+              <span className="text-[10px] uppercase tracking-wider text-slate-400">Joint Angle</span>
+              <p className="text-2xl font-black text-teal-300">{Math.round(currentAngle)}°</p>
+              <div className="flex items-center justify-end gap-1.5 text-[10px] text-purple-300 font-mono">
+                <span>ROM:</span>
+                <span>{Math.round(liveRom)}°</span>
+              </div>
+            </div>
+
+            {/* Bottom Center: Real-Time AI Coaching Cue */}
+            <div className="absolute bottom-4 left-4 right-4 mx-auto max-w-md rounded-xl bg-slate-950/90 backdrop-blur-md px-4 py-2.5 border border-teal-500/30 text-center shadow-lg z-20">
+              <span className="text-[10px] font-semibold tracking-wider text-teal-400 uppercase">
+                AI Coaching Cue
+              </span>
+              <p className="text-xs md:text-sm font-medium text-slate-100 mt-0.5">{coachingCue}</p>
+            </div>
           </div>
 
-          {/* Real-Time Controls / Testing */}
+          {/* Developer Status Panel (Requested Debug Indicator) */}
+          <div className="rounded-xl border border-slate-700 bg-slate-900/90 p-3 text-[11px] font-mono backdrop-blur-md shadow-lg grid grid-cols-2 sm:grid-cols-5 gap-2 text-slate-300">
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">CAMERA</span>
+              <span className={`font-bold ${cameraStatus === "CONNECTED" ? "text-emerald-400" : cameraStatus === "REQUESTING" ? "text-cyan-400" : "text-rose-400"}`}>
+                {cameraStatus}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">VIDEO</span>
+              <span className={`font-bold ${videoStatus === "PLAYING" ? "text-emerald-400" : "text-amber-400"}`}>
+                {videoStatus}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">MEDIAPIPE</span>
+              <span className={`font-bold ${mediaPipeStatus === "READY" ? "text-emerald-400" : mediaPipeStatus === "LOADING" ? "text-cyan-400" : "text-rose-400"}`}>
+                {mediaPipeStatus}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">LANDMARKS</span>
+              <span className={`font-bold ${landmarksDetected ? "text-emerald-400" : "text-slate-400"}`}>
+                {landmarksDetected ? "DETECTED" : "NOT DETECTED"}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">POSE FPS</span>
+              <span className="font-bold text-teal-300">{poseFps}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">ACTIVE EXERCISE</span>
+              <span className="font-bold text-white truncate block">{activeAnalyzerName}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">ANGLE</span>
+              <span className="font-bold text-cyan-300">{Math.round(currentAngle)}°</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">ROM</span>
+              <span className="font-bold text-purple-300">{Math.round(liveRom)}°</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">FSM</span>
+              <span className="font-bold text-emerald-300">{fsmState}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">REPS</span>
+              <span className="font-bold text-amber-300">{reps}</span>
+            </div>
+          </div>
+
+          {/* Real-Time Session Status */}
           {sessionActive && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-slate-300 font-medium">Session in progress ({formatTime(elapsedSeconds)})</span>
+                <span className="text-slate-300 font-medium">Rehab Session Active ({formatTime(elapsedSeconds)})</span>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => triggerRepCycle("full")}
-                  className="rounded-md border border-teal-600 bg-teal-950/50 px-3 py-1.5 text-teal-300 hover:bg-teal-900/60 font-medium transition"
-                >
-                  + Simulate Full Rep (82°)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => triggerRepCycle("shallow")}
-                  className="rounded-md border border-amber-600 bg-amber-950/50 px-3 py-1.5 text-amber-300 hover:bg-amber-900/60 font-medium transition"
-                >
-                  + Simulate Shallow Rep (105°)
-                </button>
+              <div className="text-[11px] font-mono text-teal-300">
+                Tracking Movement & Biomechanics
               </div>
             </div>
           )}
@@ -1186,16 +1383,16 @@ export default function WorkoutPage() {
         {/* Right 1 Col: Controls & Exercise Config */}
         <div className="space-y-6">
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-lg font-semibold text-white">Workout Controls</h2>
+            <h2 className="text-lg font-semibold text-white">Rehab & Tracking Controls</h2>
             <p className="text-xs text-slate-400 mt-1">Configure exercise and manage tracking session</p>
 
             {/* Exercise Selector */}
             <div className="mt-5 space-y-2">
-              <label className="text-xs font-medium text-slate-300">Target Exercise</label>
+              <label className="text-xs font-medium text-slate-300">Target Exercise Protocol</label>
               <select
                 value={selectedExerciseId}
                 onChange={(e) => handleExerciseChange(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white focus:border-teal-500 focus:outline-none"
               >
                 {exercises.map((ex) => (
                   <option key={ex.id} value={ex.id}>
@@ -1203,12 +1400,32 @@ export default function WorkoutPage() {
                   </option>
                 ))}
               </select>
-              {exercises.find((e) => e.id === selectedExerciseId)?.description && (
-                <p className="text-xs text-slate-400 mt-1">
-                  {exercises.find((e) => e.id === selectedExerciseId)?.description}
-                </p>
-              )}
             </div>
+
+            {/* Clinical Biomechanics Card */}
+            {(() => {
+              const activeEx = exercises.find((e) => e.id === selectedExerciseId);
+              const config = getExerciseConfig(activeEx?.name || "");
+              return (
+                <div className="mt-4 rounded-xl border border-teal-500/30 bg-teal-950/20 p-4 space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-teal-300 font-bold">
+                    <span>Clinical Biomechanics Target</span>
+                    <span className="rounded bg-teal-500/20 px-2 py-0.5 text-[10px] text-teal-300 border border-teal-500/30">
+                      {config.category}
+                    </span>
+                  </div>
+                  <p className="text-slate-300"><strong className="text-white">Target Joint:</strong> {config.targetJoint}</p>
+                  <p className="text-slate-400 leading-relaxed"><strong className="text-slate-300">Objective:</strong> {config.clinicalObjective}</p>
+                  <p className="text-slate-400"><strong className="text-slate-300">Target ROM Excursion:</strong> {config.romRange.min}° - {config.romRange.max}°</p>
+                  {config.valgusProtection && (
+                    <div className="flex items-center gap-1.5 text-amber-400 font-semibold pt-1">
+                      <span>🛡️</span>
+                      <span>Knee Valgus Safety Protection Active</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Action Buttons */}
             <div className="mt-6 space-y-3">
@@ -1217,9 +1434,9 @@ export default function WorkoutPage() {
                   type="button"
                   disabled={loading}
                   onClick={handleStartWorkout}
-                  className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-teal-600 py-3 text-sm font-semibold text-white hover:from-blue-500 hover:to-teal-500 shadow-lg shadow-blue-500/20 transition disabled:opacity-50"
+                  className="w-full rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 py-3.5 text-sm font-bold text-slate-950 hover:from-emerald-400 hover:to-teal-400 shadow-lg shadow-teal-500/25 transition disabled:opacity-50"
                 >
-                  {loading ? "Starting Session..." : "Start Workout"}
+                  {loading ? "Initializing Pose Engine..." : "Start Rehab & Form Session"}
                 </button>
               ) : (
                 <button

@@ -7,7 +7,7 @@
 * **Project:** AI Gym & Fitness Assistant
 * **Phase:** Phase 2 — AI Gym Trainer (Pose-to-Performance System)
 * **Status:** Fully Implemented, Tested, Integrated, and Officially Accepted
-* **Audience:** Developer 3 (Anand - Project Owner), Developer 4 (Future Teammates), Developer 1 (Architecture & Teaching)
+* **Audience:** Developer 3 (durganaik - Project Owner), Developer 4 (Future Teammates), Developer 1 (Architecture & Teaching)
 * **Python Environment:** Python 3.14.2 (Virtual Environment at `backend/.venv`)
 * **Node Environment:** Node.js v22.x / Next.js 16.3.5 / React 19.2.8
 * **Database:** PostgreSQL 16 on `localhost:5432`, Database: `ai_gym`
@@ -372,7 +372,7 @@ All 82 automated test checks across the entire system pass with 100% success:
 ### 11.1 Running the Backend API Server
 ```powershell
 # Open terminal in project root
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 
 # Activate virtual environment
 .\.venv\Scripts\Activate.ps1
@@ -385,7 +385,7 @@ uvicorn main:app --reload --port 8000
 ### 11.2 Running the Next.js Frontend Server
 ```powershell
 # Open terminal in frontend directory
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\frontend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\frontend
 
 # Run Next.js development server
 npm.cmd run dev
@@ -394,7 +394,7 @@ npm.cmd run dev
 
 ### 11.3 Running Computer Vision Standalone Demos
 ```powershell
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\ml\pose
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\ml\pose
 
 # Run live webcam squat tracker (press Q to exit)
 ..\..\backend\.venv\Scripts\python.exe demo.py --source webcam
@@ -406,11 +406,11 @@ cd C:\Users\anand\AI-Gym-Fitness-Assistant\ml\pose
 ### 11.4 Running the Complete Test Suite
 ```powershell
 # 1. Run all ML tests (Pose, Angles, FSM, Form, Performance Scoring):
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\ml
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\ml
 ..\backend\.venv\Scripts\python.exe -m unittest discover -s pose -p "test_*.py"
 
 # 2. Run Backend Workout & Security API tests:
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 .\.venv\Scripts\python.exe test_phase_2_api.py
 
 # 3. Run End-to-End Practical Smoke Test:
@@ -423,7 +423,7 @@ cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
 .\.venv\Scripts\python.exe verify_step_2d.py
 
 # 6. Verify Frontend Production Build:
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\frontend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\frontend
 npm.cmd run build
 ```
 
@@ -440,3 +440,4 @@ npm.cmd run build
    - *Decision:* The landmark reliability gate ($0.5$ confidence threshold) safely aborts angle calculation when key joints leave the frame, avoiding fabricated reps and hallucinated form scores.
 4. **Scope Boundary Maintained:**
    - Phase 3 components (Dietician/Nutrition modules, Virtual Gym Buddy multi-modal agents, Habit ML classifiers, IoT/MQTT sensor integrations) have been cleanly isolated and deferred to Phase 3.
+

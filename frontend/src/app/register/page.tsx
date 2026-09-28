@@ -77,7 +77,11 @@ export default function Register() {
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message);
+        if (err.message.includes("Failed to fetch") || err.message.includes("NetworkError")) {
+          setError(`Unable to connect to backend server at ${API_BASE_URL}. Ensure the FastAPI backend is running.`);
+        } else {
+          setError(err.message);
+        }
       } else {
         setError("Registration error occurred");
       }

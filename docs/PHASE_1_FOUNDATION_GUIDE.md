@@ -125,7 +125,7 @@ The baseline environment on our development machine:
 * **Version Control:** `Git 2.55.0.windows.2`
 * **Database Engine:** `PostgreSQL 18.6`
 * **Containerization:** Docker was *not* used (all services run natively for rapid iteration and transparent debugging).
-* **Project Root Path:** `C:\Users\anand\AI-Gym-Fitness-Assistant`
+* **Project Root Path:** `C:\Users\Durga Naik\AI-Gym-Fitness-Assistant`
 
 ### Windows PATH Challenges Encountered
 During early PostgreSQL setup, running `psql` in PowerShell returned:
@@ -189,15 +189,15 @@ git --version      # Expected: git version 2.x.x
 
 ### Step 5.2: Create Project Root & Initialize Git
 ```powershell
-mkdir C:\Users\anand\AI-Gym-Fitness-Assistant
-cd C:\Users\anand\AI-Gym-Fitness-Assistant
+mkdir C:\Users\Durga Naik\AI-Gym-Fitness-Assistant
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant
 git init
 ```
 
 ### Step 5.3: Set Up the Python Backend
 Navigate to the backend directory and create a virtual environment:
 ```powershell
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 python -m venv .venv
 
 # Activate virtual environment in PowerShell
@@ -226,7 +226,7 @@ python create_tables.py
 ### Step 5.5: Set Up the Next.js Frontend
 In a new terminal window:
 ```powershell
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\frontend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\frontend
 
 # Install dependencies if not already present
 npm install
@@ -604,8 +604,8 @@ Token invalid or expired?
   * **Request Body:**
     ```json
     {
-      "name": "Anand Test",
-      "email": "anand@example.com",
+      "name": "durganaik Test",
+      "email": "durganaik@example.com",
       "password": "SecurePassword123!"
     }
     ```
@@ -614,8 +614,8 @@ Token invalid or expired?
     {
       "message": "User registered successfully",
       "id": 2,
-      "name": "Anand Test",
-      "email": "anand@example.com"
+      "name": "durganaik Test",
+      "email": "durganaik@example.com"
     }
     ```
   * **Error (409 Conflict):** `{"detail": "Email already registered"}`
@@ -623,7 +623,7 @@ Token invalid or expired?
 * **`POST /auth/login`**
   * **Auth Required:** No
   * **Request Format:** `application/x-www-form-urlencoded`
-  * **Fields:** `username=anand@example.com&password=SecurePassword123!`
+  * **Fields:** `username=durganaik@example.com&password=SecurePassword123!`
   * **Response (200 OK):**
     ```json
     {
@@ -641,8 +641,8 @@ Token invalid or expired?
     ```json
     {
       "id": 2,
-      "name": "Anand Test",
-      "email": "anand@example.com",
+      "name": "durganaik Test",
+      "email": "durganaik@example.com",
       "date_of_birth": "2007-01-15T00:00:00",
       "gender": "male",
       "height_cm": 175.0,
@@ -674,8 +674,8 @@ Token invalid or expired?
       "message": "Profile updated successfully",
       "profile": {
         "id": 2,
-        "name": "Anand Test",
-        "email": "anand@example.com",
+        "name": "durganaik Test",
+        "email": "durganaik@example.com",
         "date_of_birth": "2007-01-15T00:00:00",
         "gender": "male",
         "height_cm": 176.0,
@@ -849,7 +849,7 @@ To run the complete system on your local machine, open two separate terminal win
 ### Terminal 1: Backend (FastAPI)
 ```powershell
 # 1. Navigate to backend directory
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 
 # 2. Activate Python virtual environment
 .\.venv\Scripts\Activate.ps1
@@ -862,7 +862,7 @@ uvicorn main:app --reload --port 8000
 ### Terminal 2: Frontend (Next.js)
 ```powershell
 # 1. Navigate to frontend directory
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\frontend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\frontend
 
 # 2. Start the Next.js development server
 npm run dev
@@ -871,7 +871,7 @@ npm run dev
 
 ### Testing the User Flow in Your Browser
 1. Open your web browser to **`http://localhost:3000/login`**.
-2. Log in with your registered credentials (e.g. `anand@example.com` or test account).
+2. Log in with your registered credentials (e.g. `durganaik@example.com` or test account).
 3. The browser will redirect you to the **Dashboard** (`http://localhost:3000/dashboard`), displaying your current profile metrics.
 4. Click the **"Edit Profile"** button in the top right.
 5. Update your height, weight, fitness goal, or dietary preference on **`http://localhost:3000/profile`**.
@@ -902,8 +902,8 @@ git --version
 #### B. Git Repository Initialization & Tracking
 ```powershell
 # Create and enter the project root directory
-mkdir C:\Users\anand\AI-Gym-Fitness-Assistant
-cd C:\Users\anand\AI-Gym-Fitness-Assistant
+mkdir C:\Users\Durga Naik\AI-Gym-Fitness-Assistant
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant
 
 # Initialize Git repository
 git init
@@ -927,13 +927,13 @@ git log --oneline
 git check-ignore -v <filepath>
 
 # Reconcile directory name from ai/ to ml/
-Rename-Item -Path "C:\Users\anand\AI-Gym-Fitness-Assistant\ai" -NewName "ml"
+Rename-Item -Path "C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\ai" -NewName "ml"
 ```
 
 #### C. Python Backend Virtual Environment & Package Management
 ```powershell
 # Navigate to backend directory
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 
 # Create isolated Python virtual environment
 python -m venv .venv
@@ -998,7 +998,7 @@ JOIN profiles p ON u.id = p.user_id;
 Automated Python Database Scripts:
 ```powershell
 # Ensure virtual environment is active in backend/
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 .\.venv\Scripts\Activate.ps1
 
 # Run initial table creation script
@@ -1011,19 +1011,19 @@ python step_2a_migration.py
 #### E. Starting Servers (Live Execution)
 ```powershell
 # TERMINAL 1 — Run FastAPI Backend (starts server on port 8000 with auto-reload)
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 .\.venv\Scripts\Activate.ps1
 uvicorn main:app --reload --port 8000
 
 # TERMINAL 2 — Run Next.js Frontend (starts dev server on port 3000)
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\frontend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\frontend
 npm run dev
 ```
 
 #### F. Frontend Dependencies & Build Verification
 ```powershell
 # Navigate to frontend directory
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\frontend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\frontend
 
 # Install all npm dependencies
 npm install
@@ -1041,7 +1041,7 @@ npm run build
 #### G. Automated Verification Test Suites
 ```powershell
 # Navigate to backend directory with active virtual environment
-cd C:\Users\anand\AI-Gym-Fitness-Assistant\backend
+cd C:\Users\Durga Naik\AI-Gym-Fitness-Assistant\backend
 .\.venv\Scripts\Activate.ps1
 
 # Run Step 2B ORM Model Verification (User-Profile 1-to-1 relationship)
@@ -1114,7 +1114,7 @@ Welcome to the team, Developer 4! Follow this checklist to get your local enviro
    - Register a new account, test login, view dashboard, and update your profile.
 
 > [!CAUTION]
-> **Developer 4 Golden Rule:** Do NOT redesign, refactor, or modify existing Phase 1 architecture (authentication, database models, or API endpoints) without prior discussion and architectural review with Developer 1 (ChatGPT) and Developer 3 (Anand).
+> **Developer 4 Golden Rule:** Do NOT redesign, refactor, or modify existing Phase 1 architecture (authentication, database models, or API endpoints) without prior discussion and architectural review with Developer 1 (ChatGPT) and Developer 3 (durganaik).
 
 ---
 
@@ -1168,3 +1168,4 @@ The upcoming Phase 2 implementation sequence will be:
 5. **Real-Time Visual & Audio Feedback:** Overlay joint angles, repetition counters, and posture warnings onto the live video feed.
 
 *(Developer 2 has stopped here. Phase 2 implementation will begin upon explicit instruction from Developer 3.)*
+

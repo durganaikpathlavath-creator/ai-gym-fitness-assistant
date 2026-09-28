@@ -170,10 +170,10 @@ export default function VirtualGymBuddyPage() {
   };
 
   const quickPrompts = [
-    { emoji: "📊", label: "How did I perform this week?", text: "How did I perform this week?" },
-    { emoji: "🎯", label: "What should I focus on next?", text: "What should I focus on in my next workout?" },
-    { emoji: "🥗", label: "How is my nutrition today?", text: "How am I doing with my nutrition today?" },
-    { emoji: "🔥", label: "Give me workout motivation!", text: "Give me some motivation for today's workout." },
+    { emoji: "🩺", label: "Rehab & ROM Advice", text: "What is the recommended joint range of motion and form cues for knee and joint recovery?" },
+    { emoji: "📊", label: "Weekly Performance", text: "How did I perform in my recent workouts and what is my form score?" },
+    { emoji: "🛡️", label: "Injury Prevention", text: "How can I fix my recurring form issues and prevent knee valgus?" },
+    { emoji: "🥑", label: "Recovery Nutrition", text: "What anti-inflammatory nutrition and daily calories should I target for muscle repair?" },
   ];
 
   const getProviderBadge = (provider?: string | null) => {
@@ -187,7 +187,7 @@ export default function VirtualGymBuddyPage() {
     if (provider.includes("safety")) {
       return <span className="rounded bg-amber-900/60 px-2 py-0.5 text-xs font-semibold text-amber-300 border border-amber-700/50">🛡️ Medical Safety Boundary</span>;
     }
-    return <span className="rounded bg-teal-900/60 px-2 py-0.5 text-xs font-semibold text-teal-300 border border-teal-700/50">🤖 Deterministic Engine</span>;
+    return <span className="rounded bg-teal-900/60 px-2 py-0.5 text-xs font-semibold text-teal-300 border border-teal-700/50">🤖 PhysioRecover Expert Engine</span>;
   };
 
   return (
@@ -196,12 +196,12 @@ export default function VirtualGymBuddyPage() {
       <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-teal-500 font-bold text-white shadow-lg shadow-indigo-500/20">
-              🤖
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 font-bold text-white shadow-lg shadow-teal-500/20">
+              🩺
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white tracking-wide">Virtual Gym Buddy</h1>
-              <p className="text-xs text-slate-400">Authenticated AI Fitness & Nutrition Assistant</p>
+              <h1 className="text-xl font-bold text-white tracking-wide">PhysioBuddy AI</h1>
+              <p className="text-xs text-slate-400">Clinical Physical Therapy, Joint ROM & Recovery Assistant</p>
             </div>
           </div>
 
