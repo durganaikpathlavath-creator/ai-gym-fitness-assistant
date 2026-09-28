@@ -94,7 +94,6 @@ function loadMediaPipeScripts(): Promise<void> {
       return;
     }
 
-    // Safety polling in case script is already in document and loaded
     let attempts = 0;
     const pollInterval = setInterval(() => {
       attempts++;
@@ -105,35 +104,30 @@ function loadMediaPipeScripts(): Promise<void> {
       }
       if (attempts > 60) {
         clearInterval(pollInterval);
+        if (typeof window !== "undefined" && (window as any).Pose) {
+          resolve();
+        } else {
+          reject(new Error("Timeout waiting for MediaPipe Pose to initialize from CDN"));
+        }
       }
     }, 50);
 
     const existing = document.querySelector('script[data-mediapipe="pose"]');
-    if (existing) {
-      existing.addEventListener("load", () => {
+    if (!existing) {
+      const script = document.createElement("script");
+      script.setAttribute("data-mediapipe", "pose");
+      script.src = "https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js";
+      script.crossOrigin = "anonymous";
+      script.onload = () => {
         clearInterval(pollInterval);
         setTimeout(() => resolve(), 50);
-      });
-      existing.addEventListener("error", () => {
+      };
+      script.onerror = () => {
         clearInterval(pollInterval);
         reject(new Error("Failed to load MediaPipe Pose script from CDN"));
-      });
-      return;
+      };
+      document.head.appendChild(script);
     }
-
-    const script = document.createElement("script");
-    script.setAttribute("data-mediapipe", "pose");
-    script.src = "https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js";
-    script.crossOrigin = "anonymous";
-    script.onload = () => {
-      clearInterval(pollInterval);
-      setTimeout(() => resolve(), 50);
-    };
-    script.onerror = () => {
-      clearInterval(pollInterval);
-      reject(new Error("Failed to load MediaPipe Pose script from CDN"));
-    };
-    document.head.appendChild(script);
   });
 }
 
@@ -277,6 +271,7 @@ export default function WorkoutPage() {
   const [landmarksDetected, setLandmarksDetected] = useState<boolean>(false);
   const [poseFps, setPoseFps] = useState<number>(0);
   const [liveRom, setLiveRom] = useState<number>(0);
+  const [selectedCameraLabel, setSelectedCameraLabel] = useState<string>("Detecting...");
   const baselineAngleRef = useRef<number | null>(null);
 
   // Atomic Pipeline Generation Token Architecture (guarantees old async callbacks die instantly)
@@ -800,42 +795,80 @@ export default function WorkoutPage() {
       }
 
       let stream: MediaStream;
-      let targetDeviceId: string | undefined = undefined;
 
-      try {
-        if (navigator.mediaDevices.enumerateDevices) {
-          const devs = await navigator.mediaDevices.enumerateDevices();
-          const videoDevs = devs.filter((d) => d.kind === "videoinput");
-          const physicalCam = videoDevs.find(
-            (d) =>
-              d.label.toLowerCase().includes("pc camera") ||
-              (!d.label.toLowerCase().includes("sharing") && !d.label.toLowerCase().includes("virtual"))
-          );
-          if (physicalCam && physicalCam.deviceId) {
-            targetDeviceId = physicalCam.deviceId;
-          }
-        }
-      } catch (_) {}
-
+      // Stage 1: Request initial stream to prompt/unlock device labels on this origin
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: targetDeviceId
-            ? { deviceId: { exact: targetDeviceId }, width: { ideal: 640 }, height: { ideal: 480 } }
-            : { width: { ideal: 640 }, height: { ideal: 480 } },
+          video: { width: { ideal: 640 }, height: { ideal: 480 } },
           audio: false,
         });
       } catch (firstErr) {
-        console.warn("Standard video constraint failed, attempting fallback:", firstErr);
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: targetDeviceId ? { deviceId: { exact: targetDeviceId } } : true,
-          audio: false,
-        });
+        console.warn("[Camera Engine] Initial constrained getUserMedia notice, attempting generic video:", firstErr);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
 
       if (genToken !== pipelineGenerationRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return;
       }
+
+      // Stage 2: Enumerate devices with active permission (labels guaranteed populated)
+      try {
+        if (navigator.mediaDevices.enumerateDevices) {
+          const allDevs = await navigator.mediaDevices.enumerateDevices();
+          const videoDevs = allDevs.filter((d) => d.kind === "videoinput");
+          console.log(
+            "[Camera Engine] Available videoinput devices:",
+            videoDevs.map((d, i) => `#${i}: "${d.label}" (${d.deviceId.slice(0, 8)}...)`)
+          );
+
+          // Find physical camera: strictly prioritize "pc camera" and reject "sharing" or "virtual"
+          const physicalCam = videoDevs.find((d) => {
+            const lbl = (d.label || "").toLowerCase();
+            return (
+              lbl.includes("pc camera") ||
+              (lbl.length > 0 && !lbl.includes("sharing") && !lbl.includes("virtual"))
+            );
+          });
+
+          const currentTrack = stream.getVideoTracks()[0];
+          const currentLabel = (currentTrack?.label || "").toLowerCase();
+
+          // If current track is virtual (Sharing Camera) or a preferred physical camera was found that differs, switch!
+          if (
+            physicalCam &&
+            physicalCam.deviceId &&
+            (currentLabel.includes("sharing") ||
+              currentLabel.includes("virtual") ||
+              (!currentLabel.includes("pc camera") && physicalCam.label.toLowerCase().includes("pc camera")))
+          ) {
+            console.log(
+              `[Camera Engine] Switching from "${currentTrack?.label}" to Physical Camera: "${physicalCam.label}"`
+            );
+            stream.getTracks().forEach((track) => track.stop());
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                deviceId: { exact: physicalCam.deviceId },
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+              },
+              audio: false,
+            });
+          }
+        }
+      } catch (enumErr) {
+        console.warn("[Camera Engine] Device enumeration/switching notice:", enumErr);
+      }
+
+      if (genToken !== pipelineGenerationRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      const activeTrack = stream.getVideoTracks()[0];
+      const activeLabel = activeTrack?.label || "Physical Webcam";
+      console.log(`[Camera Engine] ACTIVE CAMERA: "${activeLabel}" (state: ${activeTrack?.readyState})`);
+      setSelectedCameraLabel(activeLabel);
 
       streamRef.current = stream;
       setCameraStatus("CONNECTED");
@@ -858,6 +891,9 @@ export default function WorkoutPage() {
             vid.volume = 0;
             await vid.play();
             setVideoStatus("PLAYING");
+            console.log(
+              `[Video Engine] Playing: readyState=${vid.readyState}, dimensions=${vid.videoWidth}x${vid.videoHeight}`
+            );
           } catch (playErr: any) {
             console.warn("Video playback note (waiting for metadata or user activation):", playErr?.message);
           }
@@ -901,6 +937,7 @@ export default function WorkoutPage() {
     }
     setCameraActive(false);
     setCameraStatus("DISCONNECTED");
+    setSelectedCameraLabel("Stopped");
     setVideoStatus("STOPPED");
     setLandmarksDetected(false);
     setPoseFps(0);
@@ -1315,11 +1352,17 @@ export default function WorkoutPage() {
           </div>
 
           {/* Developer Status Panel (Requested Debug Indicator) */}
-          <div className="rounded-xl border border-slate-700 bg-slate-900/90 p-3 text-[11px] font-mono backdrop-blur-md shadow-lg grid grid-cols-2 sm:grid-cols-5 gap-2 text-slate-300">
+          <div className="rounded-xl border border-slate-700 bg-slate-900/90 p-3 text-[11px] font-mono backdrop-blur-md shadow-lg grid grid-cols-2 sm:grid-cols-6 gap-2 text-slate-300">
             <div>
               <span className="text-slate-500 block text-[9px] uppercase">CAMERA</span>
               <span className={`font-bold ${cameraStatus === "CONNECTED" ? "text-emerald-400" : cameraStatus === "REQUESTING" ? "text-cyan-400" : "text-rose-400"}`}>
                 {cameraStatus}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[9px] uppercase">DEVICE</span>
+              <span className="font-bold text-white truncate block text-[10px]" title={selectedCameraLabel}>
+                {selectedCameraLabel}
               </span>
             </div>
             <div>
