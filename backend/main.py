@@ -6,6 +6,7 @@ Author: P. Durga Naik
 Project: Clinical Physical Therapy, Joint ROM Biomechanics & Smart Gym Assistant
 """
 
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,22 +38,47 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ---------------------------------------------------------
+# Production & Local CORS Configuration
+# ---------------------------------------------------------
+# Default allowed origins (Production Vercel + Local Development)
+DEFAULT_ALLOWED_ORIGINS = [
+    # Production Vercel Frontend Deployments
+    "https://ai-gym-fitness-assistant-lsk5ipcd6-pathalavath.vercel.app",
+    "https://ai-gym-fitness-assistant.vercel.app",
+    # Local Development Frontend
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3002",
+    # Local Development Backend
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+# Read optional environment-configured CORS origins
+# Supported env vars: CORS_ORIGINS, ALLOWED_ORIGINS, FRONTEND_URL
+env_cors = os.getenv("CORS_ORIGINS") or os.getenv("ALLOWED_ORIGINS") or os.getenv("FRONTEND_URL") or ""
+parsed_origins = [
+    origin.strip().rstrip("/")
+    for origin in env_cors.split(",")
+    if origin.strip()
+]
+
+# De-duplicate while preserving insertion order
+allowed_origins = list(dict.fromkeys(DEFAULT_ALLOWED_ORIGINS + parsed_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "http://localhost:3002",
-        "http://127.0.0.1:3002",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ],
-    allow_origin_regex=r"^http://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"^(http://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=86400,
 )
 
 
